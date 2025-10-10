@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<title>Teams – Mensagem Agregada por Prefixo (Contatos colados + 1 planilha)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<!-- MSAL -->
+<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js" crossorigin="anonymous"></script>
+<!-- SheetJS para XLSX/CSV -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.2/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#0a0a0b;--card:#111318;--text:#e9ecf1;--muted:#9aa5b1;--accent:#ffd400;--line:#23262d}
+*{box-sizing:border-box}
+body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
+.wrap{max-width:1200px;margin:28px auto;padding:0 16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-top:18px}
+h1,h3{margin:0 0 8px 0}
+.badge{background:var(--accent);color:#1a1a1a;font-weight:700;padding:4px 10px;border-radius:999px;font-size:12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
+input,select,textarea{width:100%;background:#0d0f14;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 12px;outline:none}
+textarea{min-height:140px;resize:vertical}
+button{background:linear-gradient(180deg,#ffd400,#ffc300);color:#1a1a1a;border:none;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
+button.secondary{background:#1a1f28;color:var(--text);border:1px solid var(--line)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.muted{color:var(--muted);font-size:12px}
+.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;display:inline-flex;align-items:center;gap:8px}
+.ok{color:#00d48b;font-weight:700}.warn{color:#ff7a1a;font-weight:700}.error{color:#ff5b6b;font-weight:700}
+.small{font-size:12px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+table.preview{border-collapse:collapse;width:100%;font-size:12px}
+table.preview th,table.preview td{border:1px solid var(--line);padding:6px 8px}
+pre#log{white-space:pre-wrap;max-height:260px;overflow:auto;background:#0d0f14;border-radius:12px;border:1px solid var(--line);padding:12px}
+.kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#0d0f14;border:1px solid var(--line);border-radius:8px;padding:2px 6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="display:flex;align-items:center;gap:12px">
+    <h1>Disparo no Teams por Prefixo</h1>
+    <span class="badge">Contatos colados + 1 planilha</span>
+  </div>
+  <p class="muted">Para cada <span class="kbd">prefixo</span> comum aos contatos e à planilha, envia <b>1 mensagem</b> com: saudação “<b>Olá &lt;nome&gt;, tudo bem?</b>” + seu texto + (opcional) tabela agregada das linhas desse prefixo.</p>
+
+  <!-- 1) Auth -->
+  <div class="card">
+    <h3>1) MSAL / Graph</h3>
+    <div class="row">
+      <div><label>Tenant ID</label><input id="tenantId" placeholder="11111111-2222-3333-4444-555555555555"></div>
+      <div><label>Client ID</label><input id="clientId" placeholder="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <div><label>Redirect URI</label><input id="redirectUri" placeholder="https://seu-site.netlify.app/"></div>
+      <div><label>Scopes</label><input id="scopes" value="ChannelMessage.Send Chat.ReadWrite Group.Read.All Chat.Read User.Read.All"></div>
+    </div>
+    <div class="toolbar" style="margin-top:12px">
+      <button id="btnInit">Inicializar MSAL</button>
+      <button id="btnLogin" class="secondary">Entrar</button>
+      <span id="authStatus" class="pill"><span class="warn">Deslogado</span></span>
+    </div>
+  </div>
+
+  <!-- 2) Contatos colados -->
+  <div class="card">
+    <h3>2) Contatos (colar como planilha)</h3>
+    <label>Cole aqui (inclua cabeçalho): <b>prefixo</b> | <b>nome</b> | <b>email</b> — pode colar direto do Excel/Sheets</label>
+    <textarea id="contactsPaste" placeholder="prefixo\tnome\temail
+123\tFulano da Silva\tfulano@empresa.com
+456\tCiclano Souza\tciclano@empresa.com"></textarea>
+    <div class="toolbar" style="margin-top:10px">
+      <button id="btnParseContacts" class="secondary">Ler contatos colados</button>
+      <span id="contactsStatus" class="pill"><span class="muted">Aguardando colagem…</span></span>
+    </div>
+    <div style="margin-top:10px">
+      <div id="contactsPreview" class="small muted">Prévia aparecerá aqui.</div>
+    </div>
+
+    <!-- Picker de Prefixos -->
+    <div style="margin-top:12px">
+      <label>Prefixos a enviar (dos contatos colados)</label>
+      <div class="toolbar" style="margin-bottom:6px">
+        <button id="btnPickAll" class="secondary">Selecionar todos</button>
+        <button id="btnPickNone" class="secondary">Limpar seleção</button>
+      </div>
+      <div id="prefixPicker" class="small" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px"></div>
+    </div>
+  </div>
+
+  <!-- 3) Planilha de Linhas -->
+  <div class="card">
+    <h3>3) Planilha de Linhas (XLSX/CSV)</h3>
+    <div class="row">
+      <div>
+        <label>Arquivo — coluna obrigatória: <b>prefixo</b></label>
+        <input id="fileLines" type="file" accept=".xlsx,.xls,.csv" />
+      </div>
+      <div>
+        <label>Incluir tabela agregada das linhas?</label>
+        <select id="includeTable">
+          <option value="yes">Sim, incluir tabela</option>
+          <option value="no">Não, enviar só o texto</option>
+        </select>
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top:12px">
+      <button id="btnJoin" class="secondary">Juntar por prefixo</button>
+      <span id="joinStatus" class="pill"><span class="muted">Aguardando…</span></span>
+    </div>
+    <div style="margin-top:10px" id="joinPreview" class="small muted">Prévia do join aparecerá aqui.</div>
+  </div>
+
+  <!-- 4) Destino -->
+  <div class="card">
+    <h3>4) Destino</h3>
+    <div class="row">
+      <div>
+        <label>Modo de envio</label>
+        <select id="dmMode">
+          <option value="yes">DM 1:1 para o email colado</option>
+          <option value="no">Enviar no Canal selecionado</option>
+        </select>
+      </div>
+      <div>
+        <label class="muted">Se Canal estiver selecionado, carregue Time/Canal abaixo</label>
+        <div class="toolbar" style="margin-top:6px">
+          <button id="btnLoadTeams" class="secondary">Carregar Times & Canais</button>
+        </div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <div><label>Time</label><select id="teamSelect"><option value="">— selecione —</option></select></div>
+      <div><label>Canal</label><select id="channelSelect"><option value="">— selecione —</option></select></div>
+    </div>
+  </div>
+
+  <!-- 5) Mensagem -->
+  <div class="card">
+    <h3>5) Mensagem</h3>
+    <div class="row">
+      <div>
+        <label>Seu texto (após a saudação automática “Olá &lt;nome&gt;, tudo bem?”)</label>
+        <textarea id="freeMessage" placeholder="Escreva aqui o restante da mensagem que será igual para todos os selecionados."></textarea>
+      </div>
+      <div>
+        <label>Prévia</label>
+        <div id="previewMsg" style="background:#0d0f14;border:1px solid var(--line);border-radius:12px;padding:12px;min-height:140px"></div>
+      </div>
+    </div>
+    <div class="toolbar" style="margin-top:12px">
+      <button id="btnSendNow">Enviar agora (para os prefixos selecionados)</button>
+      <span id="sendStatus" class="pill"><span class="muted">Pronto</span></span>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="card">
+    <h3>Logs</h3>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<script>
+/* ========== Utils ========== */
+const $ = id => document.getElementById(id);
+const logEl = $('log');
+function log(msg, type="info"){
+  const ts = new Date().toLocaleString();
+  logEl.textContent += `[${ts}] ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+  if(type==="ok") $('sendStatus').innerHTML = '<span class="ok">OK</span>';
+  if(type==="error") $('sendStatus').innerHTML = '<span class="error">Erro</span>';
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function normalizeHeaders(hs){ return hs.map(h => String(h||'').toLowerCase().trim()); }
+const toKey = s => String(s ?? '').trim();
+
+/* ========== MSAL / Graph ========== */
+let msalInstance=null, account=null, accessToken=null, scopes=[];
+$('btnInit').addEventListener('click', () => {
+  const tenantId = toKey($('tenantId').value);
+  const clientId = toKey($('clientId').value);
+  const redirectUri = toKey($('redirectUri').value);
+  scopes = toKey($('scopes').value).split(/\s+/).filter(Boolean);
+  if(!tenantId || !clientId || !redirectUri){ alert('Preencha Tenant ID, Client ID, Redirect URI'); return; }
+  msalInstance = new msal.PublicClientApplication({
+    auth:{ clientId, authority:`https://login.microsoftonline.com/${tenantId}`, redirectUri },
+    cache:{ cacheLocation:'localStorage' }
+  });
+  msalInstance.handleRedirectPromise().catch(e=>log('handleRedirect erro: '+e,'error'));
+  log('MSAL inicializado. Faça login.','ok');
+});
+$('btnLogin').addEventListener('click', async ()=>{
+  if(!msalInstance) return alert('Inicialize MSAL primeiro.');
+  try{
+    const resp = await msalInstance.loginPopup({ scopes });
+    account = resp.account; msalInstance.setActiveAccount(account);
+    $('authStatus').innerHTML = `<span class="ok">Logado</span><span class="small mono" style="margin-left:8px">${account.username}</span>`;
+    await getToken(); log('Autenticado.','ok');
+  }catch(e){ log('Falha login: '+e,'error'); }
+});
+async function getToken(){
+  const req = { scopes, account: msalInstance.getActiveAccount() };
+  try{ const r=await msalInstance.acquireTokenSilent(req); accessToken=r.accessToken; return accessToken; }
+  catch{ const r=await msalInstance.acquireTokenPopup(req); accessToken=r.accessToken; return accessToken; }
+}
+async function graph(path, options={}){
+  const token = accessToken || await getToken();
+  const r = await fetch(`https://graph.microsoft.com/v1.0${path}`, { ...options, headers:{ 'Authorization':`Bearer ${token}`, 'Content-Type':'application/json', ...(options.headers||{}) }});
+  if(!r.ok){ throw new Error(`Graph ${path} -> ${r.status}: ${await r.text()}`); }
+  return r.json();
+}
+
+/* ========== Contatos colados + picker de prefixos ========== */
+let contactsRows = []; // [{prefixo, nome, email}]
+let selectedPrefixes = new Set();
+
+$('btnParseContacts').addEventListener('click', ()=>{
+  try{
+    contactsRows = parsePastedContacts($('contactsPaste').value || '');
+    if(!contactsRows.length) throw new Error('Nenhuma linha válida.');
+    $('contactsStatus').innerHTML = `<span class="ok">${contactsRows.length} contato(s)</span>`;
+    renderContactsPreview();
+    buildPrefixPicker(contactsRows);
+    renderTemplatePreview();
+    log('Contatos colados lidos.','ok');
+  }catch(e){
+    $('contactsStatus').innerHTML = `<span class="error">Erro</span>`;
+    log('Falha lendo contatos: '+e,'error');
+  }
+});
+
+function parsePastedContacts(text){
+  const rows = text.trim().split(/\r?\n/).map(l => l.split(/\t|;|,/));
+  if(!rows.length) return [];
+  const headers = rows[0].map(h => String(h||'').trim());
+  const lower = normalizeHeaders(headers);
+  const idxP = lower.indexOf('prefixo');
+  const idxN = lower.indexOf('nome');
+  const idxE = lower.indexOf('email');
+  if(idxP<0 || idxN<0 || idxE<0) throw new Error('Cabeçalhos obrigatórios: prefixo, nome, email');
+  const out=[];
+  for(let i=1;i<rows.length;i++){
+    const r = rows[i]; if(!r || !r.length) continue;
+    const prefixo = toKey(r[idxP]||''); const nome=toKey(r[idxN]||''); const email=toKey(r[idxE]||'');
+    if(!prefixo || !email) continue;
+    out.push({ prefixo, nome, email });
+  }
+  return out;
+}
+
+function renderContactsPreview(){
+  if(!contactsRows.length){ $('contactsPreview').innerHTML='Sem contatos.'; return; }
+  const cols = ['prefixo','nome','email'];
+  const head = cols.map(c=>`<th>${c}</th>`).join('');
+  const body = contactsRows.slice(0,10).map(r=>`<tr>${cols.map(c=>`<td>${escapeHtml(r[c]||'')}</td>`).join('')}</tr>`).join('');
+  $('contactsPreview').innerHTML = `<div style="overflow:auto"><table class="preview"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+function buildPrefixPicker(fromRows) {
+  const box = $('prefixPicker');
+  box.innerHTML = '';
+  const uniq = Array.from(new Set(fromRows.map(r => String(r.prefixo || '').trim()).filter(Boolean))).sort();
+  if (!uniq.length) { box.innerHTML = '<span class="muted">Nenhum prefixo detectado.</span>'; return; }
+  // seleciona todos por padrão
+  selectedPrefixes = new Set(uniq);
+  const frag = document.createDocumentFragment();
+  for (const p of uniq) {
+    const id = 'px_' + p.replace(/[^a-z0-9_-]/gi, '_');
+    const wrap = document.createElement('label');
+    wrap.style.display = 'inline-flex';
+    wrap.style.alignItems = 'center';
+    wrap.style.gap = '6px';
+    wrap.innerHTML = `<input type="checkbox" id="${id}" checked> <span class="mono">${p}</span>`;
+    frag.appendChild(wrap);
+    frag.appendChild(document.createElement('div'));
+    setTimeout(() => {
+      const cb = $(id);
+      cb.addEventListener('change', () => {
+        if (cb.checked) selectedPrefixes.add(p); else selectedPrefixes.delete(p);
+        renderTemplatePreview();
+      });
+    });
+  }
+  box.appendChild(frag);
+}
+
+$('btnPickAll').addEventListener('click', () => {
+  document.querySelectorAll('#prefixPicker input[type=checkbox]').forEach(cb => { cb.checked = true; });
+  selectedPrefixes = new Set(contactsRows.map(c => String(c.prefixo).trim()).filter(Boolean));
+  renderTemplatePreview();
+});
+
+$('btnPickNone').addEventListener('click', () => {
+  document.querySelectorAll('#prefixPicker input[type=checkbox]').forEach(cb => { cb.checked = false; });
+  selectedPrefixes.clear();
+  renderTemplatePreview();
+});
+
+/* ========== Planilha de Linhas + join ========== */
+let linesRows = [];   // todas as linhas
+let groups = [];      // [{prefixo, contatoRow, lines:[...]}]
+
+$('btnJoin').addEventListener('click', async ()=>{
+  try{
+    if(!contactsRows.length) throw new Error('Leia os contatos colados primeiro.');
+    const file = $('fileLines').files[0];
+    if(!file) throw new Error('Selecione a planilha de Linhas.');
+    linesRows = await readLinesSheet(file);
+
+    // indexar contatos por prefixo
+    const idxContacts = new Map();
+    for(const c of contactsRows){ const p=String(c.prefixo).trim(); if(p && !idxContacts.has(p)) idxContacts.set(p,c); }
+
+    // indexar linhas por prefixo (N por prefixo)
+    const idxLines = new Map();
+    for(const r of linesRows){
+      const p = toKey(r.prefixo||''); if(!p) continue;
+      if(!idxLines.has(p)) idxLines.set(p, []);
+      idxLines.get(p).push(r);
+    }
+
+    // montar grupos somente quando existir nos dois lados e estiver selecionado no picker
+    groups = [];
+    for(const [p, contato] of idxContacts.entries()){
+      if(!selectedPrefixes.has(p)) continue;
+      const arr = idxLines.get(p);
+      if(arr && arr.length) groups.push({ prefixo:p, contatoRow:contato, lines:arr });
+    }
+
+    $('joinStatus').innerHTML = `<span class="ok">${groups.length} prefixo(s) com match</span>`;
+    renderJoinPreview();
+    renderTemplatePreview();
+    log('Join concluído.','ok');
+  }catch(e){
+    $('joinStatus').innerHTML = `<span class="error">Erro</span>`;
+    log('Join falhou: '+e,'error');
+  }
+});
+
+async function readLinesSheet(file){
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type:'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+  if(!rows.length) throw new Error('Planilha vazia.');
+  const headers = Object.keys(rows[0]); const lower = normalizeHeaders(headers);
+  if(!lower.includes('prefixo')) throw new Error('Coluna obrigatória "prefixo" ausente na planilha.');
+  // normalizar: manter originais e alias minúsculo
+  return rows.map(r=>{
+    const out={};
+    for(const k of Object.keys(r)){
+      out[k]=r[k];
+      const lk = String(k).toLowerCase().trim();
+      if(!(lk in out)) out[lk]=r[k];
+    }
+    return out;
+  });
+}
+
+function renderJoinPreview(){
+  if(!groups.length){ $('joinPreview').innerHTML = 'Sem matches (verifique seleção de prefixos e a planilha).'; return; }
+  const sample = groups.slice(0,8).map(g => ({ prefixo:g.prefixo, contato:g.contatoRow.email, qtd_linhas:g.lines.length, ...g.lines[0] }));
+  const cols = Object.keys(sample[0]).slice(0,10);
+  const head = cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('');
+  const body = sample.map(r=>`<tr>${cols.map(c=>`<td>${escapeHtml(String(r[c]??''))}</td>`).join('')}</tr>`).join('');
+  $('joinPreview').innerHTML = `<div style="overflow:auto"><table class="preview"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+
+/* ========== Prévia da mensagem (saudação com nome + texto livre + tabela opcional) ========== */
+$('freeMessage').addEventListener('input', renderTemplatePreview);
+$('includeTable').addEventListener('change', renderTemplatePreview);
+
+function renderTemplatePreview(){
+  const box = $('previewMsg');
+  const freeText = $('freeMessage').value || '';
+  const includeTable = $('includeTable').value === 'yes';
+
+  // Prioriza prévia de um grupo real (com linhas)
+  if(groups.length){
+    const g = groups[0];
+    const saudacao = `<p>Olá ${escapeHtml(g.contatoRow.nome || '')}, tudo bem?</p>`;
+    const corpo = freeText ? `<p>${escapeHtml(freeText)}</p>` : '';
+    const tabela = (includeTable && g.lines?.length) ? ('<div style="height:8px"></div>' + linesArrayToTableHTML(g.lines)) : '';
+    box.innerHTML = saudacao + corpo + tabela;
+    return;
+  }
+
+  // Sem grupos: usa primeiro prefixo selecionado (ou primeiro contato)
+  const firstSel = Array.from(selectedPrefixes)[0];
+  const contato = contactsRows.find(c => String(c.prefixo).trim() === firstSel) || contactsRows[0];
+  if(!contato){ box.innerHTML = '<span class="muted">Cole contatos ou faça o join primeiro…</span>'; return; }
+  const saudacao = `<p>Olá ${escapeHtml(contato.nome || '')}, tudo bem?</p>`;
+  const corpo = freeText ? `<p>${escapeHtml(freeText)}</p>` : '';
+  box.innerHTML = saudacao + corpo + `<div class="muted small" style="margin-top:6px">(Sem planilha agregada)</div>`;
+}
+
+function linesArrayToTableHTML(lines){
+  if(!lines?.length) return '<i>(sem linhas)</i>';
+  const colSet=new Set(); lines.forEach(l=>Object.keys(l).forEach(k=>colSet.add(k)));
+  const cols=[...colSet];
+  const head = cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('');
+  const body = lines.map(l=>`<tr>${cols.map(c=>`<td>${escapeHtml(String(l[c]??''))}</td>`).join('')}</tr>`).join('');
+  return `<table class="preview"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+/* ========== Destino (Teams) ========== */
+$('btnLoadTeams').addEventListener('click', async ()=>{
+  try{
+    const data = await graph('/me/joinedTeams');
+    const sel=$('teamSelect'); sel.innerHTML='<option value="">— selecione —</option>';
+    (data.value||[]).forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.textContent=t.displayName; sel.appendChild(o); });
+    log('Times carregados.','ok');
+  }catch(e){ log('Listar times: '+e,'error'); }
+});
+$('teamSelect').addEventListener('change', async ev=>{
+  const teamId = ev.target.value; const ch=$('channelSelect'); ch.innerHTML='<option value="">— selecione —</option>';
+  if(!teamId) return;
+  try{
+    const data = await graph(`/teams/${teamId}/channels`);
+    (data.value||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.displayName; ch.appendChild(o); });
+    log('Canais carregados.','ok');
+  }catch(e){ log('Listar canais: '+e,'error'); }
+});
+
+/* ========== Envio (sempre 1 por prefixo selecionado) ========== */
+$('btnSendNow').addEventListener('click', async ()=>{
+  try{
+    if(!contactsRows.length) return alert('Cole e leia os contatos primeiro.');
+    const dm = $('dmMode').value === 'yes';
+    const includeTable = $('includeTable').value === 'yes';
+    const freeText = $('freeMessage').value || '';
+
+    let teamId='', channelId='';
+    if(!dm){
+      teamId = toKey($('teamSelect').value); channelId = toKey($('channelSelect').value);
+      if(!teamId || !channelId) return alert('Selecione Time + Canal.');
+    }
+
+    const targets = Array.from(selectedPrefixes);
+    if (!targets.length) return alert('Selecione ao menos um prefixo no picker.');
+
+    // Se houver planilha e join, estabeleça groups filtrados pelos selecionados
+    let payloadGroups = [];
+    if (linesRows.length) {
+      // construir idx de linhas por prefixo
+      const idxLines = new Map();
+      for(const r of linesRows){
+        const p = toKey(r.prefixo||''); if(!p) continue;
+        if(!idxLines.has(p)) idxLines.set(p, []);
+        idxLines.get(p).push(r);
+      }
+      // para cada prefixo selecionado, se tiver contato e linhas, monta grupo; se não tiver linhas, envia sem tabela
+      payloadGroups = targets.map(p => {
+        const contatoRow = contactsRows.find(c => String(c.prefixo).trim() === p);
+        const lines = (idxLines.get(p) || []);
+        return contatoRow ? { prefixo:p, contatoRow, lines } : null;
+      }).filter(Boolean);
+    } else {
+      // Sem planilha: grupos sintéticos só com contato
+      payloadGroups = targets.map(p => {
+        const contatoRow = contactsRows.find(c => String(c.prefixo).trim() === p);
+        return contatoRow ? { prefixo:p, contatoRow, lines: [] } : null;
+      }).filter(Boolean);
+    }
+
+    if (!payloadGroups.length) return alert('Nenhum grupo para enviar (verifique contatos/seleção/planilha).');
+
+    let sent=0, failed=0;
+    for (const g of payloadGroups) {
+      try{
+        const saudacao = `<p>Olá ${escapeHtml(g.contatoRow.nome || '')}, tudo bem?</p>`;
+        const corpo = freeText ? `<p>${escapeHtml(freeText)}</p>` : '';
+        const tabela = (includeTable && g.lines?.length) ? ('<div style="height:8px"></div>' + linesArrayToTableHTML(g.lines)) : '';
+        const bodyHtml = saudacao + corpo + tabela;
+
+        if (dm) {
+          const user = await findUserByEmail(g.contatoRow.email);
+          const chatId = await getOrCreateOneOnOneChat(user.id);
+          await sendChatMessage(chatId, bodyHtml);
+          log(`DM enviada para ${g.contatoRow.email} (prefixo ${g.prefixo}).`,'ok');
+        } else {
+          await sendChannelMessage(teamId, channelId, bodyHtml);
+          log(`Canal: mensagem enviada (prefixo ${g.prefixo}).`,'ok');
+        }
+        sent++;
+      }catch(e){
+        failed++; log(`Falha no prefixo ${g.prefixo}: `+e,'error');
+      }
+    }
+    $('sendStatus').innerHTML = `<span class="${failed?'warn':'ok'}">Concluído: ${sent} enviados, ${failed} falharam</span>`;
+  }catch(e){
+    log('Erro no envio: '+e,'error');
+    $('sendStatus').innerHTML = '<span class="error">Erro</span>';
+  }
+});
+
+/* ========== Graph helpers ========== */
+async function sendChannelMessage(teamId, channelId, html){
+  return graph(`/teams/${teamId}/channels/${channelId}/messages`, { method:'POST', body: JSON.stringify({ body:{ contentType:'html', content: html } }) });
+}
+async function sendChatMessage(chatId, html){
+  return graph(`/chats/${chatId}/messages`, { method:'POST', body: JSON.stringify({ body:{ contentType:'html', content: html } }) });
+}
+async function findUserByEmail(email){
+  const q = email.replace(/'/g,"''");
+  const data = await graph(`/users?$filter=mail eq '${q}' or userPrincipalName eq '${q}'&$select=id,displayName,mail,userPrincipalName`);
+  if(!data.value?.length) throw new Error('Usuário não encontrado: '+email);
+  return data.value[0];
+}
+async function getOrCreateOneOnOneChat(userId){
+  const me = await graph('/me?$select=id');
+  const body = {
+    chatType: "oneOnOne",
+    members: [
+      { "@odata.type": "#microsoft.graph.aadUserConversationMember", "roles": ["owner"], "user@odata.bind": `https://graph.microsoft.com/v1.0/users('${me.id}')` },
+      { "@odata.type": "#microsoft.graph.aadUserConversationMember", "roles": ["owner"], "user@odata.bind": `https://graph.microsoft.com/v1.0/users('${userId}')` }
+    ]
+  };
+  const created = await graph('/chats', { method:'POST', body: JSON.stringify(body) });
+  return created.id;
+}
+</script>
+</body>
+</html>
