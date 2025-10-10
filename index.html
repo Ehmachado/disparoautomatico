@@ -1,462 +1,406 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>SUPER BARREIRAS</title>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<title>Disparador de Mensagens — Copiar & Colar (com anexos em texto)</title>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
 <style>
   :root{
-    --bb-yellow:#FFCC00;
-    --bb-blue:#003399;
-    --ink:#0c1424;
-    --muted:#6b7280;
-    --bg:#f3f6ff;           
-    --bg-accent:#fff7d1;    
-    --bg-accent-2:#e8f7ff;  
-    --card:#ffffff;
-    --radius:12px;
+    --bb-azul:#0033a0; --bb-amarelo:#ffcc00; --bg:#f6f7fb; --card:#ffffff;
+    --muted:#6b7280; --warn:#d97706; --radius:16px;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;background:linear-gradient(180deg, var(--bg-accent-2), var(--bg));color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
-  .page{max-width:980px;margin:16px auto 32px;padding:0 10px;}
-  .titlecard{
-    background:linear-gradient(135deg,var(--bb-yellow),#ffe480);
-    border:1px solid #f3c300;color:#0b0b0b;border-radius:var(--radius);
-    padding:8px 10px;display:flex;justify-content:space-between;align-items:center;
-    box-shadow:0 6px 24px rgba(0,0,0,.08);
-    margin-bottom:6px;
-  }
-  h1{font-size:18px;margin:0 0 2px 0;letter-spacing:.2px;}
-  .subtitle{margin:0;font-weight:700;color:#0c2a66;font-size:12px;opacity:.95}
-  .actions{display:flex;gap:6px;flex-wrap:wrap}
-  button,.ghost{border:none;border-radius:8px;padding:6px 8px;font-weight:700;cursor:pointer;font-size:12px;}
-  .primary{background:var(--bb-blue);color:#fff;box-shadow:0 6px 18px rgba(0,51,153,.28)}
-  .ghost{background:#f2f6ff;color:#0c2a66;border:1px solid #cfe0ff}
-
-  .card{margin-top:0;background:var(--card);border-radius:var(--radius);padding:10px;border:1px solid #e6e8ef;box-shadow:0 6px 20px rgba(0,0,0,.06);}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-  @media (max-width:860px){ .grid{ grid-template-columns:1fr; } }
-  .field{display:flex;flex-direction:column;gap:4px;background:linear-gradient(180deg,#fafbff,var(--bg-accent));border:1px solid #eef0f6;border-radius:10px;padding:8px 8px;}
-  .field label{font-size:11px;color:#193057;font-weight:800;line-height:1.1;}
-  input[type="text"].money,input[type="text"].percent,input[type="text"].ro,select,textarea,input[type="date"],input[type="text"]{
-    width:100%;padding:6px 8px;border:1px solid #dde3f3;border-radius:8px;background:#fff;font-size:12px;font-weight:700;color:#0f172a;line-height:1.1;
-  }
-  textarea{min-height:64px;resize:vertical;font-weight:600}
-  input[readonly]{background:#f7f7fb;}
-  .hint{font-size:10px;color:#6b7280}
-  .kpi{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .pill{padding:6px 8px;border-radius:999px;font-weight:800;background:#eef2ff;border:1px dashed #c7d2fe;color:#1e40af;font-size:11px;}
-
-  .subtitle-sep{
-    grid-column:1 / -1; margin:0; padding:6px 8px;
-    background:linear-gradient(90deg,#fff3b0,#ffe88f);
-    border:1px solid #f3c300;border-radius:9px;
-    font-weight:900;color:#0f274d;font-size:12px;letter-spacing:.2px;
-  }
-
-  .legend{margin-top:8px;font-size:11px;color:#374151;background:#fff8db;border:1px solid #f3c300;padding:6px 8px;border-radius:9px;line-height:1.25}
-  .legend b{color:#1f2937}
-
-  .print-value{display:none;font-weight:800;font-size:12px;color:#0f172a;background:#fff;border:1px solid #dde3f3;border-radius:8px;padding:6px 8px;}
-  .print-mode .field input,.print-mode .field select,.print-mode .field textarea{display:none;}
-  .print-mode .field .print-value{display:block;}
-
-  #capture{border:2px solid var(--bb-blue);border-radius:14px;padding:10px;background:linear-gradient(180deg,#fff,#f8fbff);box-shadow:0 8px 28px rgba(0,35,90,.12) inset;}
-
-  /* Ultra-condensed for export (3 columns, tiny gaps) */
-  .ultra #capture{max-width:794px;margin:0 auto;}
-  .ultra .grid{gap:2px; grid-template-columns:1fr 1fr 1fr;}
-  .ultra .field{padding:5px;border-radius:7px;background:linear-gradient(180deg,#ffffff,#fff6bf);}
-  .ultra .field label{font-size:10px;}
-  .ultra input, .ultra select, .ultra textarea{padding:4px 5px;font-size:10px;border-radius:6px;}
-  .ultra h1{font-size:16px;}
-  .ultra .subtitle{font-size:11px;}
-  .ultra .titlecard{padding:6px 8px;border-radius:10px;}
-  .ultra .pill{padding:3px 5px;font-size:10px;}
-  .ultra .print-value{padding:4px 5px;font-size:10px;}
-  .ultra .subtitle-sep{padding:4px 6px;font-size:10px;border-radius:7px;}
-
-  /* Ultra+ overrides: 3 cols & tighter compaction for export */
-  .ultra #capture{max-width:794px;margin:0 auto;}
-  .ultra .grid{gap:2px !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important;}
-  .ultra .field{padding:3px !important;border-radius:6px !important;}
-  .ultra .field label{font-size:9px !important; line-height:1.05;}
-  .ultra input, .ultra select, .ultra textarea{padding:3px 4px !important;font-size:9px !important;border-radius:5px !important;}
-  .ultra h1{font-size:15px !important;}
-  .ultra .subtitle{font-size:10px !important;}
-  .ultra .titlecard{padding:5px 6px !important;border-radius:8px !important;}
-  .ultra .pill{padding:2px 4px !important;font-size:9px !important;}
-  .ultra .print-value{padding:3px 4px !important;font-size:9px !important;}
-  .ultra .subtitle-sep{padding:3px 5px !important;font-size:9px !important;border-radius:6px !important;}
-
+  body{margin:0; font-family:Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial; background:linear-gradient(135deg,#f0f3ff,#f8fafc); color:#111827}
+  header{padding:20px 24px; background:var(--bb-azul); color:#fff; display:flex; align-items:center; justify-content:space-between}
+  header h1{margin:0; font-size:20px; font-weight:700}
+  .pill{display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; background:#ecfeff; color:#0c4a6e}
+  .container{max-width:1200px; margin:24px auto; padding:0 16px}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .card{background:var(--card); border-radius:var(--radius); box-shadow:0 6px 24px rgba(3,7,18,.08); padding:16px}
+  .card h2{margin:0 0 12px 0; font-size:16px}
+  .helper{font-size:12px; color:var(--muted); margin-top:6px}
+  .toolbar{display:flex; gap:8px; flex-wrap:wrap}
+  textarea, input[type="text"], input[type="file"]{width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; font:inherit}
+  textarea{min-height:120px; resize:vertical}
+  .btn{appearance:none; border:0; background:var(--bb-azul); color:#fff; padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer}
+  .btn.ghost{background:#fff; color:#0f172a; border:1px solid #e5e7eb}
+  .btn.dark{background:#0f172a}
+  .table-wrap{border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; background:#fff}
+  table{width:100%; border-collapse:collapse; font-size:14px}
+  th, td{padding:10px 12px; border-bottom:1px solid #f1f5f9; text-align:left}
+  thead th{background:#f8fafc; font-size:12px; color:#475569; text-transform:uppercase; letter-spacing:.02em}
+  .list{display:grid; gap:12px}
+  .msg{border:1px dashed #cbd5e1; border-radius:12px; padding:12px; background:#fcfcff}
+  .muted{color:var(--muted)}
+  .badge{font-size:12px; padding:3px 8px; border-radius:999px; background:#eef2ff; color:#3730a3}
+  .right{margin-left:auto}
+  pre{white-space:pre-wrap; margin:0}
 </style>
 </head>
-<body class="compact">
-<div class="page">
-  <div id="capture" class="card">
-    <div class="titlecard">
-      <div>
-        <h1>SUPER BARREIRAS</h1>
-        <div class="subtitle">Super Barreiras - Análise de Operações</div>
-      </div>
-      <div class="actions">
-        <button class="ghost" id="togglePrint">Pré-visualizar impressão</button>
-        <button class="primary" id="savePng">Salvar em imagem (PNG)</button>
-      </div>
-    </div>
-    <div class="grid">
-
-      <div class="field">
-        <label for="alcada">Alçada</label>
-        <input id="alcada" type="text" placeholder="">
-        <div class="print-value" data-from="alcada"></div>
-      </div>
-
-      <div class="field">
-        <label for="mci">MCI</label>
-        <input id="mci" type="text" placeholder="">
-        <div class="print-value" data-from="mci"></div>
-      </div>
-
-      <div class="field">
-        <label for="cliente">Cliente</label>
-        <input id="cliente" type="text" placeholder="">
-        <div class="print-value" data-from="cliente"></div>
-      </div>
-
-      <div class="field">
-        <label for="idade-do-cliente">Idade do Cliente</label>
-        <input id="idade-do-cliente" type="text" placeholder="">
-        <div class="print-value" data-from="idade-do-cliente"></div>
-      </div>
-
-      <div class="field">
-        <label for="cliente-desde">Cliente desde (Data)</label>
-        <input id="cliente-desde" type="date">
-        <div class="print-value" data-from="cliente-desde"></div>
-      </div>
-
-      <div class="field">
-        <label for="proposta">Proposta</label>
-        <input id="proposta" type="text" placeholder="">
-        <div class="print-value" data-from="proposta"></div>
-      </div>
-
-      <div class="field">
-        <label for="linha-de-credito">Linha de Crédito</label>
-        <input id="linha-de-credito" type="text" placeholder="">
-        <div class="print-value" data-from="linha-de-credito"></div>
-      </div>
-
-      <div class="field">
-        <label for="item-financiado">Item Financiado</label>
-        <input id="item-financiado" type="text" placeholder="">
-        <div class="print-value" data-from="item-financiado"></div>
-      </div>
-
-      <div class="field">
-        <label for="rating">Rating</label>
-        <input id="rating" type="text" placeholder="">
-        <div class="print-value" data-from="rating"></div>
-      </div>
-      <div class="subtitle-sep">-----------------------------------------------------------------------------------------------------------------------------------</div>
-
-
-      <div class="field">
-        <label for="autorizacao-grao">Autorização Grão</label>
-        <textarea id="autorizacao-grao" placeholder=""></textarea>
-        <div class="print-value" data-from="autorizacao-grao"></div>
-      </div>
-
-      <div class="field">
-        <label for="valor-operacao">Valor Operação (R$)</label>
-        <input id="valor-operacao" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="valor-operacao"></div>
-      </div>
-
-      <div class="field">
-        <label for="seguros-quais">Seguros (Quais?)</label>
-        <input id="seguros-quais" type="text" placeholder="">
-        <div class="print-value" data-from="seguros-quais"></div>
-      </div>
-
-      <div class="field">
-        <label for="rs-contratado-na-operacao">RS contratado na operação (R$)</label>
-        <input id="rs-contratado-na-operacao" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="rs-contratado-na-operacao"></div>
-      </div>
-
-      <div class="field">
-        <label for="limite-de-credito-vigencia-e-risco">Limite de Crédito (Vigência e Risco)</label>
-        <input id="limite-de-credito-vigencia-e-risco" type="text" placeholder="">
-        <div class="print-value" data-from="limite-de-credito-vigencia-e-risco"></div>
-      </div>
-
-      <div class="field">
-        <label for="condicionante-do-lc-qual">Condicionante do LC (Qual?)</label>
-        <input id="condicionante-do-lc-qual" type="text" placeholder="">
-        <div class="print-value" data-from="condicionante-do-lc-qual"></div>
-      </div>
-      <div class="subtitle-sep">RECEITA BRUTA - CLIENTES 03-20-41 SELECIONAR LC, F12-6-F9</div>
-
-      <div class="field">
-        <label for="receita-bruta-total-obtida">Receita Bruta Total Obtida (R$)</label>
-        <input id="receita-bruta-total-obtida" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="receita-bruta-total-obtida"></div>
-      </div>
-
-      <div class="field">
-        <label for="receita-bruta-total-prevista">Receita Bruta Total Prevista (R$)</label>
-        <input id="receita-bruta-total-prevista" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="receita-bruta-total-prevista"></div>
-      </div>
-
-      <div class="field">
-        <label for="resultado-operacional-agropecuario-obtido">Resultado Operacional Agropecuário Obtido (R$)</label>
-        <input id="resultado-operacional-agropecuario-obtido" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="resultado-operacional-agropecuario-obtido"></div>
-      </div>
-
-      <div class="field">
-        <label for="resultado-operacional-agropecuario-previsto">Resultado Operacional Agropecuário Previsto (R$)</label>
-        <input id="resultado-operacional-agropecuario-previsto" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="resultado-operacional-agropecuario-previsto"></div>
-      </div>
-
-      <div class="field">
-        <label for="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho">Pecuária: Quantidade de animais compatível com área do cliente? (Se não, justifique o apascentamento aqui e no despacho)</label>
-        <select id="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho">
-          <option value="" selected disabled>Selecione</option>
-          <option>Sim</option>
-          <option>Não</option>
-          <option>Não se aplica</option>
-        </select>
-        <div class="print-value" data-from="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho"></div>
-        <label for="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho-justificativa">Justifique</label>
-        <textarea id="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho-justificativa" placeholder="Descreva a justificativa"></textarea>
-        <div class="print-value" data-from="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho-justificativa"></div>
-      </div>
-
-      <div class="field">
-        <label for="garantias">Garantias</label>
-        <input id="garantias" type="text" placeholder="">
-        <div class="print-value" data-from="garantias"></div>
-      </div>
-      <div class="subtitle-sep">-----------------------------------------------------------------------------------------------------------------------------------</div>
-</div>
-
-      <div class="field">
-        <label for="share-bb-preenchimento-automatico">Share BB ( preenchimento automático) (%) = Endiv. BB ÷ Endiv. SFN</label>
-        <input id="share-bb-preenchimento-automatico" class="percent" type="text" readonly placeholder="0,00%">
-        <div class="print-value" data-from="share-bb-preenchimento-automatico"></div>
-      </div>
-
-      <div class="field">
-        <label for="recursos-liquidos">Recursos liquidos (R$)</label>
-        <input id="recursos-liquidos" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="recursos-liquidos"></div>
-      </div>
-
-      <div class="field">
-        <label for="patrimonio-total">Patrimônio Total (R$)</label>
-        <input id="patrimonio-total" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="patrimonio-total"></div>
-      </div>
-
-      <div class="field">
-        <label for="endividamento-no-sfn">Endividamento no SFN (R$)</label>
-        <input id="endividamento-no-sfn" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="endividamento-no-sfn"></div>
-      </div>
-
-      <div class="field">
-        <label for="endividamento-no-bb">Endividamento no BB (R$)</label>
-        <input id="endividamento-no-bb" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="endividamento-no-bb"></div>
-      </div>
-
-      <div class="field">
-        <label for="inad-agro-agencia-rel-5398">Inad Agro Agência (rel 5398) (R$)</label>
-        <input id="inad-agro-agencia-rel-5398" class="money" type="text" inputmode="decimal" placeholder="0,00">
-        <div class="print-value" data-from="inad-agro-agencia-rel-5398"></div>
-      </div>
-
-      <div class="field">
-        <label for="proposta-customizada">Proposta Customizada</label>
-        <select id="proposta-customizada">
-          <option value="" selected disabled>Selecione</option>
-          <option>Sim</option>
-          <option>Não</option>
-          <option>Não se aplica</option>
-        </select>
-        <div class="print-value" data-from="proposta-customizada"></div>
-      </div>
-
-      <div class="field">
-        <label for="de-operacoes-do-cliente-com-garantia-hipotecaria">% de operações do cliente Com garantia Hipotecária (%)</label>
-        <input id="de-operacoes-do-cliente-com-garantia-hipotecaria" class="percent" type="text" inputmode="decimal" placeholder="0,00%">
-        <div class="print-value" data-from="de-operacoes-do-cliente-com-garantia-hipotecaria"></div>
-      </div>
-
-      <div class="field">
-        <label for="rende-facil">Rende Fácil</label>
-        <select id="rende-facil">
-          <option value="" selected disabled>Selecione</option>
-          <option>Sim</option>
-          <option>Não</option>
-          <option>Não se aplica</option>
-        </select>
-        <div class="print-value" data-from="rende-facil"></div>
-      </div>
-    </div>
-    <div class="legend">
-      <b>Exporte e nos envie a imagem para que sua operação seja votada</b><br>
-    </div>
+<body>
+<header>
+  <div>
+    <h1>Disparador — Copiar & Colar</h1>
+    <small>Anexa as linhas do prefixo automaticamente no corpo da mensagem</small>
   </div>
-  <footer>Use <strong>Salvar em imagem</strong> para exportar o painel completo.</footer>
+  <div class="pill">Funciona 100% local</div>
+</header>
+
+<div class="container">
+  <div class="grid">
+    <!-- Contatos -->
+    <section class="card">
+      <h2>1) Contatos</h2>
+      <div class="helper">Cole uma tabela com cabeçalhos <b>prefixo</b>, <b>nome</b>, <b>email</b> (tab/CSV).</div>
+      <textarea id="contactsInput" placeholder="Exemplo:
+prefixo	nome	email
+123	Maria Silva	maria@empresa.com
+456	João Souza	joao@empresa.com"></textarea>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn" id="loadContacts">Carregar contatos</button>
+        <button class="btn ghost" id="clearContacts">Limpar</button>
+        <input id="searchBox" type="text" placeholder="Filtrar por nome, email ou prefixo..." />
+        <div class="right"><span id="contactStats" class="badge">0 contatos</span></div>
+      </div>
+      <div class="table-wrap" style="margin-top:10px; max-height:280px; overflow:auto">
+        <table id="contactsTable">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="selectAll"></th>
+              <th>Prefixo</th>
+              <th>Nome</th>
+              <th>Email</th>
+              <th>Linhas do anexo</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Mensagem -->
+    <section class="card">
+      <h2>2) Mensagem</h2>
+      <div class="helper">A saudação é automática: <b>“Olá &lt;Nome do contato&gt;, tudo bem?”</b>. Escreva abaixo apenas o restante.</div>
+      <textarea id="messageBody" placeholder="Escreva aqui o texto após a saudação automática."></textarea>
+      <div class="helper">A mensagem final incluirá automaticamente um bloco com as linhas do prefixo (se houver) sob o título “Anexo do prefixo …”.</div>
+      <div style="margin-top:8px">
+        <label class="muted">Prévia:</label>
+        <div class="msg" id="previewBox">Olá Fulano, tudo bem?<br><br><span class="muted">[sua mensagem]</span><br><br><span class="muted">[Anexo do prefixo — aparece quando houver planilha enviada]</span></div>
+      </div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn" id="generateMsgs">Gerar mensagens</button>
+        <button class="btn dark" id="exportCSV">Exportar selecionados (CSV)</button>
+      </div>
+    </section>
+
+    <!-- Planilha / anexos -->
+    <section class="card">
+      <h2>3) Planilha para anexar no corpo</h2>
+      <div class="helper">Envie .xlsx/.csv com coluna <b>prefixo</b>. As linhas com o mesmo prefixo serão agrupadas e <b>inseridas no corpo da mensagem</b>.</div>
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn" id="downloadZip" disabled>Baixar anexos (CSV/por contato)</button>
+        <button class="btn ghost" id="clearAttach" disabled>Limpar planilha</button>
+        <div class="right"><span id="attachStats" class="badge">Sem planilha</span></div>
+      </div>
+      <div class="helper">Observação: o ZIP/CSV é opcional — a mensagem já leva as linhas do prefixo em texto.</div>
+    </section>
+
+    <!-- Saída -->
+    <section class="card" style="grid-column: span 2">
+      <h2>4) Mensagens geradas (copiar & colar)</h2>
+      <div class="helper">Clique em <b>Copiar</b>. O texto já vem com “Olá &lt;Nome&gt;” e com o bloco “Anexo do prefixo …” quando houver.</div>
+      <div id="output" class="list"></div>
+    </section>
+  </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
 <script>
-  const fmtBRL = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL', maximumFractionDigits:2 });
-  const fmtPct = new Intl.NumberFormat('pt-BR', { style:'percent', minimumFractionDigits:2, maximumFractionDigits:2 });
+  // Estado
+  let contacts = [];              // {prefixo, nome, email, selected, attachCount}
+  let filteredContactsIdx = [];
+  let groupedByPrefix = {};       // {prefixo: [rowObj]}
+  let attachHeaders = [];
 
-  function toNumberBR(v){
-    if(!v) return 0;
-    v = String(v).replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3})/g,'');
-    v = v.replace(',', '.');
-    const n = parseFloat(v);
-    return isNaN(n) ? 0 : n;
-  }
-  function setPrintMirror(id, text){
-    const span = document.querySelector(`.print-value[data-from="${id}"]`);
-    if(span){ span.textContent = text || ''; }
-  }
+  const el = s => document.querySelector(s);
+  const normalizeKey = s => String(s||'').trim().toLowerCase();
+  const debounce = (fn,ms=250)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms)} };
 
-  function handleMoneyInput(e){
-    const el = e.target;
-    const raw = toNumberBR(el.value);
-    el.dataset.raw = raw;
-    const pretty = fmtBRL.format(raw);
-    setPrintMirror(el.id, pretty);
-    updateShare();
+  // Util
+  function titleCaseName(name){
+    if(!name) return "Fulano";
+    return String(name).toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase());
   }
-  function handlePercentInput(e){
-    const el = e.target;
-    const raw = toNumberBR(el.value)/100.0;
-    el.dataset.rawpct = raw;
-    const pretty = fmtPct.format(raw);
-    setPrintMirror(el.id, pretty);
+  function toCSV(rows, headers){
+    if(!rows || !rows.length) return "";
+    const cols = headers?.length ? headers : Object.keys(rows[0]);
+    const esc = v => {
+      const s = v==null ? "" : String(v);
+      return /[",\n;]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+    };
+    const out = [];
+    out.push(cols.join(";"));
+    for(const r of rows){ out.push(cols.map(c=>esc(r[c])).join(";")); }
+    return out.join("\n");
   }
-  function bindMirror(el){ el.addEventListener('input', ()=> setPrintMirror(el.id, el.value || '')); }
-
-  // Mirror helpers for export
-  function syncAllToPrint(){
-    // Money
-    document.querySelectorAll('input.money').forEach(el=>{
-      let raw = el.dataset.raw;
-      if(raw === undefined || raw === ""){
-        raw = toNumberBR(el.value);
-        el.dataset.raw = raw;
-      }
-      setPrintMirror(el.id, fmtBRL.format(parseFloat(raw||0)));
-    });
-    // Percent (editable)
-    document.querySelectorAll('input.percent:not([readonly])').forEach(el=>{
-      let rp = el.dataset.rawpct;
-      if(rp === undefined || rp === ""){
-        rp = toNumberBR(el.value)/100.0;
-        el.dataset.rawpct = rp;
-      }
-      setPrintMirror(el.id, fmtPct.format(parseFloat(rp||0)));
-    });
-    // Percent readonly (Share)
-    document.querySelectorAll('input.percent[readonly]').forEach(el=>{
-      setPrintMirror(el.id, el.value || "0,00%");
-    });
-    // Date
-    document.querySelectorAll('input[type="date"]').forEach(el=>{
-      if(el.value){
-        const d = new Date(el.value);
-        const txt = d.toLocaleDateString('pt-BR', { timeZone:'UTC' });
-        setPrintMirror(el.id, txt);
-      }else{
-        setPrintMirror(el.id, "");
-      }
-    });
-    // Text + Textarea
-    document.querySelectorAll('textarea, input[type="text"]:not(.money):not(.percent)').forEach(el=>{
-      setPrintMirror(el.id, el.value || '');
-    });
-    // Selects
-    document.querySelectorAll('select').forEach(el=>{
-      setPrintMirror(el.id, el.value || '');
-    });
-    // Recompute Share at the end to ensure latest mirroring
-    updateShare();
+  function downloadBlob(name, blob){
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove()},400);
   }
 
-  // Event wiring
-  document.querySelectorAll('input.money').forEach(el=>{
-    el.addEventListener('input', handleMoneyInput);
-    el.dataset.raw = el.dataset.raw || 0;
+  // Contatos
+  function parseContacts(raw){
+    raw = (raw||"").trim();
+    if(!raw) return [];
+    const first = raw.split(/\r?\n/)[0]||"";
+    let sep = '\t';
+    if(first.includes(';')) sep=';';
+    else if(first.includes(',')) sep=',';
+    const lines = raw.split(/\r?\n/).filter(l=>l.trim().length);
+    const headers = lines.shift().split(sep).map(h=>normalizeKey(h));
+    const iPrefixo = headers.indexOf('prefixo');
+    const iNome    = headers.indexOf('nome');
+    const iEmail   = headers.indexOf('email');
+    if(iPrefixo<0 || iNome<0 || iEmail<0){ alert('Cabeçalhos necessários: prefixo, nome, email.'); return []; }
+    const data=[];
+    for(const line of lines){
+      const p=line.split(sep);
+      data.push({
+        prefixo:String(p[iPrefixo]||'').trim(),
+        nome:String(p[iNome]||'').trim(),
+        email:String(p[iEmail]||'').trim(),
+        selected:false,
+        attachCount:0
+      });
+    }
+    return data;
+  }
+
+  function renderContacts(){
+    const tbody = el('#contactsTable tbody'); tbody.innerHTML='';
+    filteredContactsIdx = [];
+    const q = normalizeKey(el('#searchBox').value);
+    contacts.forEach((c,i)=>{
+      const hay = normalizeKey(`${c.prefixo} ${c.nome} ${c.email}`);
+      if(q && !hay.includes(q)) return;
+      filteredContactsIdx.push(i);
+      const tr=document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="checkbox" data-idx="${i}" ${c.selected?'checked':''}></td>
+        <td>${c.prefixo||''}</td>
+        <td>${c.nome||''}</td>
+        <td>${c.email||''}</td>
+        <td><span class="badge">${c.attachCount||0}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    el('#contactStats').textContent = `${contacts.length} contato${contacts.length===1?'':'s'} • ${filteredContactsIdx.length} exibido${filteredContactsIdx.length===1?'':'s'}`;
+    const anyAttach = Object.keys(groupedByPrefix).length>0;
+    el('#downloadZip').disabled = !anyAttach;
+    el('#clearAttach').disabled = !anyAttach;
+    updatePreview();
+  }
+
+  el('#loadContacts').addEventListener('click', ()=>{
+    const data = parseContacts(el('#contactsInput').value);
+    if(!data.length) return;
+    contacts = data;
+    if(Object.keys(groupedByPrefix).length){ updateAttachCountsAndAutoselect(); }
+    renderContacts();
   });
-  document.querySelectorAll('input.percent').forEach(el=>{
-    if(!el.readOnly){
-      el.addEventListener('input', handlePercentInput);
-      el.dataset.rawpct = el.dataset.rawpct || 0;
+  el('#clearContacts').addEventListener('click', ()=>{
+    contacts=[]; el('#contactsInput').value=''; renderContacts(); el('#output').innerHTML='';
+  });
+  el('#contactsTable').addEventListener('change', e=>{
+    if(e.target.matches('input[type="checkbox"][data-idx]')){
+      const i=Number(e.target.getAttribute('data-idx'));
+      if(!Number.isNaN(i) && contacts[i]) contacts[i].selected = e.target.checked;
     }
   });
-  document.querySelectorAll('textarea').forEach(bindMirror);
-  document.querySelectorAll('input[type="text"]:not(.money):not(.percent)').forEach(bindMirror);
-  document.querySelectorAll('input[type="date"]').forEach(bindMirror);
-  document.querySelectorAll('select').forEach(el=>{
-    el.addEventListener('change', ()=> setPrintMirror(el.id, el.value || ''));
+  el('#selectAll').addEventListener('change', e=>{
+    const check = e.target.checked;
+    filteredContactsIdx.forEach(i=>{ if(contacts[i]) contacts[i].selected = check; });
+    renderContacts();
   });
+  el('#searchBox').addEventListener('input', debounce(renderContacts,150));
 
-  const idEndivSfn = 'endividamento-no-sfn';
-  const idEndivBb  = 'endividamento-no-bb';
-  const idShare    = 'share-bb-preenchimento-automatico';
-  function updateShare(){
-    if(!idEndivSfn || !idEndivBb || !idShare) return;
-    const sfnEl = document.getElementById(idEndivSfn);
-    const bbEl  = document.getElementById(idEndivBb);
-    const shareEl = document.getElementById(idShare);
-    if(!sfnEl || !bbEl || !shareEl) return;
-    const sfn = parseFloat(sfnEl.dataset.raw || 0);
-    const bb  = parseFloat(bbEl.dataset.raw  || 0);
-    const share = (sfn > 0) ? (bb/sfn) : 0;
-    const text = fmtPct.format(share);
-    shareEl.value = text;
-    setPrintMirror(idShare, text);
+  // Saudação + corpo + anexo em texto
+  function buildAttachmentBlock(prefixo){
+    const rows = groupedByPrefix[String(prefixo).trim()] || [];
+    if(!rows.length) return "";
+    const headers = attachHeaders?.length ? attachHeaders : Object.keys(rows[0]);
+    const csv = toCSV(rows, headers);
+    const lines = csv.split("\n");
+    // transformamos CSV em bloco legível (mantemos ';' para fácil colagem)
+    return [
+      `---`,
+      `Anexo do prefixo ${prefixo}:`,
+      `${lines[0]}`, // cabeçalho
+      ...lines.slice(1)
+    ].join("\n");
   }
 
-  const toggleBtn = document.getElementById('togglePrint');
-  toggleBtn.addEventListener('click', ()=>{
-    document.body.classList.toggle('print-mode');
-    toggleBtn.textContent = document.body.classList.contains('print-mode') ? 'Sair da pré-visualização' : 'Pré-visualizar impressão';
+  function buildMessageFor(contact, body){
+    const nome = titleCaseName(contact?.nome || 'Fulano');
+    const greeting = `Olá ${nome}, tudo bem?`;
+    const partBody = (body && body.trim()) ? `\n\n${body.trim()}` : '';
+    const attach = buildAttachmentBlock(contact?.prefixo);
+    const partAttach = attach ? `\n\n${attach}` : '';
+    return `${greeting}${partBody}${partAttach}`;
+  }
+
+  function updatePreview(){
+    // prévia usa: primeiro contato selecionado; senão, um exemplo com Fulano
+    let sample = {nome:'Fulano', prefixo:'—'};
+    const sel = contacts.find(c=>c.selected) || contacts[0];
+    if(sel) sample = sel;
+    const body = el('#messageBody').value || '';
+    el('#previewBox').innerHTML = buildMessageFor(sample, body).replace(/\n/g,'<br>');
+  }
+  el('#messageBody').addEventListener('input', debounce(updatePreview,100));
+
+  // Planilha
+  el('#fileInput').addEventListener('change', async (e)=>{
+    const file = e.target.files?.[0]; if(!file) return;
+    try{
+      const buf = await file.arrayBuffer();
+      let rows=[], headers=[];
+      if(file.name.toLowerCase().endsWith('.csv')){
+        const text = new TextDecoder('utf-8').decode(buf);
+        const first = (text.split(/\r?\n/)[0]||"");
+        const sep = first.includes(';')?';':',';
+        const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
+        headers = (lines.shift()||'').split(sep).map(h=>h.trim());
+        for(const line of lines){
+          const cells = line.split(sep); const obj={};
+          headers.forEach((h,i)=> obj[h]=(cells[i]??'').trim());
+          rows.push(obj);
+        }
+      } else {
+        const wb = XLSX.read(buf, {type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+        headers = Object.keys(rows[0]||{});
+      }
+      const prefixHeader = headers.find(h=>normalizeKey(h)==='prefixo');
+      if(!prefixHeader){ alert('A planilha precisa da coluna "prefixo".'); return; }
+
+      groupedByPrefix = {};
+      for(const r of rows){
+        const p = String(r[prefixHeader]??'').trim();
+        if(!p) continue;
+        if(!groupedByPrefix[p]) groupedByPrefix[p]=[];
+        groupedByPrefix[p].push(r);
+      }
+      attachHeaders = headers;
+
+      updateAttachCountsAndAutoselect();
+      el('#attachStats').textContent = `Planilha: ${file.name} • ${rows.length} linha(s) • ${Object.keys(groupedByPrefix).length} prefixo(s)`;
+      renderContacts();
+    }catch(err){
+      console.error(err); alert('Não foi possível ler a planilha.');
+    }
   });
 
-  document.getElementById('savePng').addEventListener('click', async ()=>{
-    const wasPrint = document.body.classList.contains('print-mode');
-    document.body.classList.add('ultra'); // super compacto e 3 colunas
-    // Sync all fields BEFORE hiding inputs
-    syncAllToPrint();
-    if(!wasPrint) document.body.classList.add('print-mode');
-    const node = document.querySelector('#capture');
-    const scale = window.devicePixelRatio > 1 ? 2 : 1;
-    const canvas = await html2canvas(node, {backgroundColor:'#ffffff', scale});
-    const link = document.createElement('a');
-    link.download = 'super-barreiras-analise-ultra-compact.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    if(!wasPrint) document.body.classList.remove('print-mode');
-    document.body.classList.remove('ultra');
+  function updateAttachCountsAndAutoselect(){
+    const prefixes = new Set(Object.keys(groupedByPrefix));
+    contacts.forEach(c=>{
+      const count = prefixes.has(String(c.prefixo).trim()) ? groupedByPrefix[String(c.prefixo).trim()].length : 0;
+      c.attachCount = count;
+      if(count>0) c.selected = true; // auto-seleciona quando há linhas
+    });
+  }
+
+  el('#clearAttach').addEventListener('click', ()=>{
+    groupedByPrefix={}; attachHeaders=[];
+    contacts.forEach(c=> c.attachCount=0);
+    el('#attachStats').textContent='Sem planilha';
+    renderContacts();
   });
 
-  // Initialize computed Share on load
-  updateShare();
+  el('#downloadZip').addEventListener('click', async ()=>{
+    if(!Object.keys(groupedByPrefix).length){ alert('Nenhuma planilha carregada.'); return; }
+    const zip = new JSZip();
+    let added=0;
+    for(const c of contacts.filter(c=>c.selected && c.attachCount>0)){
+      const pref = String(c.prefixo).trim();
+      const rows = groupedByPrefix[pref]||[];
+      const csv = toCSV(rows, attachHeaders);
+      zip.file(`${pref} - ${titleCaseName(c.nome)}.csv`, csv);
+      added++;
+    }
+    if(!added){ alert('Nenhum contato selecionado com linhas.'); return; }
+    const blob = await zip.generateAsync({type:'blob'});
+    saveAs(blob, 'anexos_por_prefixo.zip');
+  });
+
+  // Geração das mensagens
+  el('#generateMsgs').addEventListener('click', ()=>{
+    const body = el('#messageBody').value || '';
+    const target = el('#output'); target.innerHTML='';
+    const selected = contacts.filter(c=>c.selected);
+    if(!selected.length){ target.innerHTML = `<div class="muted">Nenhum contato selecionado.</div>`; return; }
+
+    for(const c of selected){
+      const msg = buildMessageFor(c, body);
+      const wrap = document.createElement('div');
+      wrap.className='msg';
+      const hasAttach = (c.attachCount||0)>0;
+
+      wrap.innerHTML = `
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">
+          <strong>${titleCaseName(c.nome)}</strong>
+          <span class="badge">${c.email||'sem email'}</span>
+          <span class="right badge">Prefixo: ${c.prefixo||'-'}</span>
+        </div>
+        <pre>${msg}</pre>
+        <div class="toolbar" style="margin-top:8px">
+          <button class="btn" data-copy>Copiar mensagem</button>
+          ${hasAttach ? `<button class="btn ghost" data-dl>Baixar CSV (${c.attachCount})</button>` : `<span class="muted">Sem linhas para este prefixo</span>`}
+        </div>
+      `;
+      target.appendChild(wrap);
+
+      // copiar
+      wrap.querySelector('[data-copy]').addEventListener('click', async ()=>{
+        try{
+          await navigator.clipboard.writeText(msg);
+          const b = wrap.querySelector('[data-copy]'); b.textContent='Copiado!'; setTimeout(()=>b.textContent='Copiar mensagem',1200);
+        }catch{
+          const ta=document.createElement('textarea'); ta.value=msg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+          const b = wrap.querySelector('[data-copy]'); b.textContent='Copiado!'; setTimeout(()=>b.textContent='Copiar mensagem',1200);
+        }
+      });
+
+      // download csv por contato
+      if(hasAttach){
+        wrap.querySelector('[data-dl]').addEventListener('click', ()=>{
+          const pref = String(c.prefixo).trim();
+          const rows = groupedByPrefix[pref]||[];
+          const csv = toCSV(rows, attachHeaders);
+          const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+          downloadBlob(`${pref} - ${titleCaseName(c.nome)}.csv`, blob);
+        });
+      }
+    }
+  });
+
+  // Export CSV da lista de envios
+  el('#exportCSV').addEventListener('click', ()=>{
+    const sel = contacts.filter(c=>c.selected);
+    if(!sel.length){ alert('Nenhum contato selecionado.'); return; }
+    const rows = sel.map(c=>({ prefixo:c.prefixo, nome:c.nome, email:c.email, linhas:(c.attachCount||0) }));
+    const csv = toCSV(rows, ['prefixo','nome','email','linhas']);
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    downloadBlob('lista_envios.csv', blob);
+  });
 </script>
 </body>
 </html>
