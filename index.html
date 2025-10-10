@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Disparador — Copiar & Colar (sem upload)</title>
+<title>Disparador — Copiar & Colar (planilha colada + contatos salvos)</title>
 
-<!-- Apenas ZIP/Save para exportar arquivos gerados localmente -->
+<!-- Export local (opcional) -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
 <style>
-  :root{--bb-azul:#0033a0;--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--warn:#d97706;--radius:16px}
+  :root{--bb-azul:#0033a0;--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--radius:16px}
   *{box-sizing:border-box}
   body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(135deg,#f0f3ff,#f8fafc);color:#111827}
   header{padding:20px 24px;background:var(--bb-azul);color:#fff;display:flex;align-items:center;justify-content:space-between}
@@ -40,13 +40,14 @@
   .ok{background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;border-radius:12px;padding:6px 10px;font-size:12px}
   .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;padding:10px;font-size:12px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .small{font-size:12px}
 </style>
 </head>
 <body>
 <header>
   <div>
     <h1>Disparador — Copiar & Colar</h1>
-    <small>Saudação automática (só o primeiro nome) + anexo em texto (linhas por prefixo) • Sem upload</small>
+    <small>Planilha colada → tabela na mensagem • Contatos salvos (opcional)</small>
   </div>
   <div class="pill">100% local (nada sai do seu PC)</div>
 </header>
@@ -56,15 +57,18 @@
     <!-- 1) Contatos -->
     <section class="card">
       <h2>1) Contatos</h2>
-      <div class="helper">Cole tabela com cabeçalhos <b>prefixo</b>, <b>nome</b>, <b>email</b> (TAB/CSV).</div>
+      <div class="helper">Cole tabela com cabeçalhos <b>prefixo</b>, <b>nome</b>, <b>email</b> (TAB/CSV). Você pode manter estes contatos salvos no navegador.</div>
       <textarea id="contactsInput" placeholder="Exemplo:
 prefixo nome email
 123 Maria Clara Souza maria@empresa.com
 456 João Pedro joao@empresa.com"></textarea>
-      <div class="toolbar" style="margin-top:8px">
+      <div class="toolbar" style="margin-top:8px; align-items:center">
         <button class="btn" id="loadContacts">Carregar contatos</button>
         <button class="btn ghost" id="clearContacts">Limpar</button>
         <input id="searchBox" type="text" placeholder="Filtrar por nome, email ou prefixo..." />
+        <label class="small" style="display:flex; align-items:center; gap:6px">
+          <input type="checkbox" id="keepContacts"> Manter contatos salvos neste navegador
+        </label>
         <div class="right"><span id="contactStats" class="badge">0 contatos</span></div>
       </div>
       <div class="table-wrap" style="margin-top:10px; max-height:280px; overflow:auto">
@@ -88,10 +92,10 @@ prefixo nome email
       <h2>2) Mensagem</h2>
       <div class="helper">Abertura fixa: <b>“Olá &lt;Primeiro Nome&gt;, tudo bem?”</b>. Escreva somente o restante.</div>
       <textarea id="messageBody" placeholder="Escreva aqui o texto após a saudação automática."></textarea>
-      <div class="helper">Se houver dados colados no item 3, as linhas do <b>prefixo</b> do contato serão incluídas automaticamente no corpo.</div>
+      <div class="helper">Se houver dados colados no item 3, as linhas do <b>prefixo</b> e/ou <b>dependência</b> (ou <b>nome da dependência</b>) do contato serão incluídas na mensagem.</div>
       <div style="margin-top:8px">
         <label class="muted">Prévia:</label>
-        <div class="msg" id="previewBox">Olá Fulano, tudo bem?<br><br><span class="muted">[sua mensagem]</span><br><br><span class="muted">[Anexo do prefixo — surge quando houver dados colados]</span></div>
+        <div class="msg" id="previewBox">Olá Fulano, tudo bem?<br><br><span class="muted">[sua mensagem]</span><br><br><span class="muted">[Tabela da planilha — aparece quando houver dados colados]</span></div>
       </div>
       <div class="toolbar" style="margin-top:8px">
         <button class="btn" id="generateMsgs">Gerar mensagens</button>
@@ -101,13 +105,13 @@ prefixo nome email
 
     <!-- 3) Dados para anexar (COLAR AQUI) -->
     <section class="card">
-      <h2>3) Dados para anexar (colagem de tabela)</h2>
-      <div class="helper">Cole aqui a tabela que contém a coluna <b>prefixo</b>. Aceita TAB/“;”/“,”. Podemos detectar automaticamente o cabeçalho, ou você informa a linha.</div>
-      <textarea id="attachInput" placeholder="Exemplo (pode colar direto do Excel/Sheets):
-prefixo;produto;quantidade;valor
-123;Teclado;2;199,90
-123;Mouse;1;99,90
-456;Monitor;1;1.199,00"></textarea>
+      <h2>3) Dados da planilha (colar tabela aqui)</h2>
+      <div class="helper">Cole a tabela com os mesmos cabeçalhos da sua planilha (TAB/“;”/“,”). Detectamos automaticamente o cabeçalho ou você informa a linha.</div>
+      <textarea id="attachInput" placeholder="Exemplo (cole do Excel/Sheets):
+prefixo;dependencia;produto;quantidade;valor
+123;Almoxarifado;Teclado;2;199,90
+123;Almoxarifado;Mouse;1;99,90
+456;TI;Monitor;1;1.199,00"></textarea>
       <div class="row" style="margin-top:8px">
         <label>Linha do cabeçalho:</label>
         <input id="headerRow" type="text" placeholder="auto" style="width:120px">
@@ -115,6 +119,7 @@ prefixo;produto;quantidade;valor
         <button class="btn ghost" id="clearAttach" disabled>Limpar dados</button>
         <div class="right"><span id="attachStats" class="badge">Sem dados</span></div>
       </div>
+      <div class="helper">Regra de associação por contato: a linha entra se <b>prefixo</b> = prefixo do contato <u>ou</u> <b>dependência</b>/<b>nome da dependência</b> = <i>nome do contato</i> (sem acentos/maiúsculas importarem).</div>
       <div id="errorBox" class="helper"></div>
       <div class="toolbar" style="margin-top:8px">
         <button class="btn" id="downloadZip" disabled>Baixar anexos (CSV/por contato)</button>
@@ -124,7 +129,7 @@ prefixo;produto;quantidade;valor
     <!-- 4) Saída -->
     <section class="card" style="grid-column: span 2">
       <h2>4) Mensagens geradas (copiar & colar)</h2>
-      <div class="helper">Clique em <b>Copiar</b>. O texto já vem com “Olá &lt;Primeiro Nome&gt;” e o bloco “Anexo do prefixo …” (quando houver).</div>
+      <div class="helper">Clique em <b>Copiar</b>. O texto já vem com “Olá &lt;Primeiro Nome&gt;” e a <b>tabela</b> com as linhas correspondentes.</div>
       <div id="output" class="list"></div>
     </section>
   </div>
@@ -134,8 +139,9 @@ prefixo;produto;quantidade;valor
 /* ---------------- Estado ---------------- */
 let contacts = []; // {prefixo, nome, email, selected, attachCount}
 let filteredContactsIdx = [];
-let groupedByPrefix = {}; // {prefixo: [rowObj]}
-let attachHeaders = []; // cabeçalho das linhas
+let attachHeaders = []; // cabeçalhos da planilha colada
+let rowsAll = []; // linhas cruas da planilha colada (array de objetos)
+let groupedRowsByContact = new Map(); // Map(contactIndex -> rows[])
 
 const el = s => document.querySelector(s);
 const normalizeKey = s => String(s||'').trim().toLowerCase();
@@ -162,7 +168,7 @@ function toCSV(rows, headers){
   };
   const out = [];
   out.push(cols.join(";"));
-  for(const r of rows){ out.push(cols.map(c=>esc(r[c])).join(";")); }
+  for(const r of rows){ out.push(cols.map(c=>esc(r[c] ?? '')).join(";")); }
   return out.join("\n");
 }
 function downloadBlob(name, blob){
@@ -180,22 +186,11 @@ function detectDelimiter(text){
   const score = [{d:'\t',n:c('\t')},{d:';',n:c(';')},{d:',',n:c(',')}].sort((a,b)=>b.n-a.n);
   return score[0].n>0 ? score[0].d : '\t';
 }
-function detectHeaderRow(aoa, preferred){
-  if(preferred){
-    const n = parseInt(preferred,10);
-    if(Number.isInteger(n) && n>=1 && n<=aoa.length) return n-1;
-  }
-  const maxCheck = Math.min(10, aoa.length);
-  let best = 0;
-  for(let i=0;i<maxCheck;i++){
-    const row = aoa[i] || [];
-    const norm = row.map(v=>normalizeKey(String(v)));
-    const hasPrefix = norm.some(v=>/^prefixo$/.test(v) || /^pref$/.test(v) || /^prefix$/.test(v) || v.includes('prefix'));
-    const nonEmpty = norm.filter(v=>v.length>0).length;
-    if(hasPrefix && nonEmpty>=1){ best = i; break; }
-    if(nonEmpty > (aoa[best]||[]).filter(v=>String(v).trim().length>0).length) best = i;
-  }
-  return best;
+function stripAccents(s){
+  return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function equalsLoose(a,b){
+  return stripAccents(a).trim().toLowerCase() === stripAccents(b).trim().toLowerCase();
 }
 
 /* ---------------- Contatos ---------------- */
@@ -244,21 +239,49 @@ function renderContacts(){
     tbody.appendChild(tr);
   });
   el('#contactStats').textContent = `${contacts.length} contato${contacts.length===1?'':'s'} • ${filteredContactsIdx.length} exibido${filteredContactsIdx.length===1?'':'s'}`;
-  const anyAttach = Object.keys(groupedByPrefix).length>0;
-  el('#downloadZip').disabled = !anyAttach;
-  el('#clearAttach').disabled = !anyAttach;
   updatePreview();
 }
 
+/* manter contatos salvos */
+function saveContactsIfEnabled(){
+  if(el('#keepContacts').checked){
+    localStorage.setItem('savedContactsRaw', el('#contactsInput').value || '');
+    localStorage.setItem('keepContacts', '1');
+  } else {
+    localStorage.removeItem('savedContactsRaw');
+    localStorage.setItem('keepContacts', '0');
+  }
+}
+function loadSavedContactsOnStart(){
+  const keep = localStorage.getItem('keepContacts') === '1';
+  el('#keepContacts').checked = keep;
+  const saved = localStorage.getItem('savedContactsRaw') || '';
+  if(keep && saved){
+    el('#contactsInput').value = saved;
+    const data = parseContacts(saved);
+    if(data.length){
+      contacts = data;
+      renderContacts();
+    }
+  }
+}
+loadSavedContactsOnStart();
+
+el('#keepContacts').addEventListener('change', saveContactsIfEnabled);
+
 el('#loadContacts').addEventListener('click', ()=>{
-  const data = parseContacts(el('#contactsInput').value);
+  const raw = el('#contactsInput').value;
+  const data = parseContacts(raw);
   if(!data.length) return;
   contacts = data;
-  if(Object.keys(groupedByPrefix).length){ updateAttachCountsAndAutoselect(); }
+  // reconta anexos com base nos dados colados (se houver)
+  recountAndAutoselect();
   renderContacts();
+  saveContactsIfEnabled();
 });
 el('#clearContacts').addEventListener('click', ()=>{
   contacts=[]; el('#contactsInput').value=''; renderContacts(); el('#output').innerHTML='';
+  saveContactsIfEnabled();
 });
 el('#contactsTable').addEventListener('change', e=>{
   if(e.target.matches('input[type="checkbox"][data-idx]')){
@@ -273,7 +296,7 @@ el('#selectAll').addEventListener('change', e=>{
 });
 el('#searchBox').addEventListener('input', debounce(renderContacts,150));
 
-/* ---------------- Anexo (colar tabela) ---------------- */
+/* ---------------- Anexo (colar tabela = planilha) ---------------- */
 el('#parseAttach').addEventListener('click', ()=>{
   try{
     const raw = (el('#attachInput').value||'').trim();
@@ -286,8 +309,14 @@ el('#parseAttach').addEventListener('click', ()=>{
     const dataAoA = aoa.slice(headRowIdx+1).filter(r=>r.some(v=>String(v).trim()!==''));
     const rows = dataAoA.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o; });
 
-    processAttachRows(rows, headers, 'dados colados');
+    attachHeaders = headers;
+    rowsAll = rows;
+
+    recountAndAutoselect(); // atualiza contagem/seleção conforme novas linhas
     showOk('Dados carregados a partir da colagem.');
+    el('#attachStats').textContent = `Fonte: dados colados • ${rows.length} linha(s) • ${headers.length} coluna(s)`;
+    el('#clearAttach').disabled = false;
+    el('#downloadZip').disabled = !rows.length;
   }catch(err){
     console.error(err);
     showError('Falha ao processar a colagem.', err?.message || String(err));
@@ -295,7 +324,7 @@ el('#parseAttach').addEventListener('click', ()=>{
 });
 
 el('#clearAttach').addEventListener('click', ()=>{
-  groupedByPrefix={}; attachHeaders=[];
+  attachHeaders=[]; rowsAll=[]; groupedRowsByContact.clear();
   contacts.forEach(c=> c.attachCount=0);
   el('#attachStats').textContent='Sem dados';
   el('#errorBox').innerHTML='';
@@ -304,68 +333,92 @@ el('#clearAttach').addEventListener('click', ()=>{
   renderContacts();
 });
 
-function processAttachRows(rows, headers, label){
-  // localizar coluna de prefixo (variações)
-  const prefHeader = headers.find(h=>{
+/* Reconta anexos/seleciona contatos com base nas regras (prefixo OU dependencia/nome da dependencia == nome do contato) */
+function recountAndAutoselect(){
+  groupedRowsByContact.clear();
+
+  // identificar nomes possíveis para 'dependência'
+  const depLikeCols = (attachHeaders||[]).filter(h=>{
     const k = normalizeKey(h);
-    return k==='prefixo' || k==='pref' || k==='prefix' || k.includes('prefix');
+    return k==='dependencia' || k==='dependência' || k==='nome dependencia' || k==='nome da dependencia' || k==='nome da dependência' || k.includes('depend');
   });
-  if(!prefHeader) throw new Error('Não achei a coluna "prefixo" (variações aceitas: prefixo, pref, prefix).');
 
-  groupedByPrefix = {};
-  for(const r of rows){
-    const p = String(r[prefHeader]??'').trim();
-    if(!p) continue;
-    if(!groupedByPrefix[p]) groupedByPrefix[p]=[];
-    groupedByPrefix[p].push(r);
-  }
-  attachHeaders = headers;
-  updateAttachCountsAndAutoselect();
+  // nome “padrão” na planilha (às vezes vem 'nome' como nome da dependência)
+  const nameLikeCols = (attachHeaders||[]).filter(h=> normalizeKey(h)==='nome' || normalizeKey(h).includes('nome') );
 
-  const prefixCount = Object.keys(groupedByPrefix).length;
-  el('#attachStats').textContent = `Fonte: ${label} • ${rows.length} linha(s) • ${prefixCount} prefixo(s)`;
-  el('#clearAttach').disabled = false;
-  el('#downloadZip').disabled = prefixCount===0;
+  contacts.forEach((c, idx)=>{
+    const rowsMatch = [];
+    const px = String(c.prefixo||'').trim();
+    const nomeContato = String(c.nome||'').trim();
+
+    for(const r of rowsAll){
+      let matched = false;
+      // 1) prefixo igual
+      if(attachHeaders.some(h=> equalsLoose(r[h]??'', px) && normalizeKey(h).includes('prefix'))){
+        matched = true;
+      }
+      // 2) dependencia/nome da dependência == nome do contato
+      if(!matched && depLikeCols.length){
+        for(const h of depLikeCols){
+          if(equalsLoose(r[h], nomeContato)){ matched = true; break; }
+        }
+      }
+      // 3) algumas planilhas usam 'nome' para a dependência
+      if(!matched && nameLikeCols.length){
+        for(const h of nameLikeCols){
+          if(equalsLoose(r[h], nomeContato)){ matched = true; break; }
+        }
+      }
+      if(matched) rowsMatch.push(r);
+    }
+
+    groupedRowsByContact.set(idx, rowsMatch);
+    c.attachCount = rowsMatch.length;
+    if(rowsMatch.length>0) c.selected = true;
+  });
   renderContacts();
 }
 
-function updateAttachCountsAndAutoselect(){
-  const prefixes = new Set(Object.keys(groupedByPrefix));
-  contacts.forEach(c=>{
-    const count = prefixes.has(String(c.prefixo).trim()) ? groupedByPrefix[String(c.prefixo).trim()].length : 0;
-    c.attachCount = count;
-    if(count>0) c.selected = true;
-  });
+/* ---------------- Mensagem ---------------- */
+/* Gera tabela Markdown fiel à planilha (mesmos cabeçalhos/ordem) com apenas as linhas do contato */
+function buildMarkdownTable(headers, rows){
+  if(!headers?.length || !rows?.length) return '';
+  const th = '| ' + headers.join(' | ') + ' |';
+  const sep = '| ' + headers.map(()=> '---').join(' | ') + ' |';
+  const lines = rows.map(r => '| ' + headers.map(h => String(r[h] ?? '')).join(' | ') + ' |');
+  return [th, sep, ...lines].join('\n');
 }
 
-/* ---------------- Mensagem ---------------- */
-function buildAttachmentBlock(prefixo){
-  const rows = groupedByPrefix[String(prefixo).trim()] || [];
+function buildAttachmentBlockTable(contactIndex){
+  const rows = groupedRowsByContact.get(contactIndex) || [];
   if(!rows.length) return "";
-  const headers = attachHeaders?.length ? attachHeaders : Object.keys(rows[0]);
-  const csv = toCSV(rows, headers);
-  const lines = csv.split("\n");
+  const table = buildMarkdownTable(attachHeaders, rows);
   return [
     `---`,
-    `Anexo do prefixo ${prefixo}:`,
-    `${lines[0]}`,
-    ...lines.slice(1)
+    `Tabela (planilha) referente ao contato:`,
+    table
   ].join("\n");
 }
-function buildMessageFor(contact, body){
+
+function buildMessageFor(contact, contactIndex, body){
   const nome = firstName(contact?.nome);
   const greeting = `Olá ${nome}, tudo bem?`;
   const partBody = (body && body.trim()) ? `\n\n${body.trim()}` : '';
-  const attach = buildAttachmentBlock(contact?.prefixo);
-  const partAttach = attach ? `\n\n${attach}` : '';
-  return `${greeting}${partBody}${partAttach}`;
+  const partAttach = buildAttachmentBlockTable(contactIndex);
+  const attachBlock = partAttach ? `\n\n${partAttach}` : '';
+  return `${greeting}${partBody}${attachBlock}`;
 }
+
 function updatePreview(){
-  let sample = {nome:'Fulano', prefixo:'—'};
-  const sel = contacts.find(c=>c.selected) || contacts[0];
-  if(sel) sample = sel;
+  let sampleIdx = contacts.findIndex(c=>c.selected);
+  if(sampleIdx<0) sampleIdx = contacts.length ? 0 : -1;
   const body = el('#messageBody').value || '';
-  el('#previewBox').innerHTML = buildMessageFor(sample, body).replace(/\n/g,'<br>');
+  let preview = 'Olá Fulano, tudo bem?\n\n[sua mensagem]';
+  if(sampleIdx>=0){
+    const c = contacts[sampleIdx];
+    preview = buildMessageFor(c, sampleIdx, body);
+  }
+  el('#previewBox').innerHTML = preview.replace(/\n/g,'<br>');
 }
 el('#messageBody').addEventListener('input', debounce(updatePreview,100));
 
@@ -376,8 +429,9 @@ el('#generateMsgs').addEventListener('click', ()=>{
   const selected = contacts.filter(c=>c.selected);
   if(!selected.length){ target.innerHTML = `<div class="muted">Nenhum contato selecionado.</div>`; return; }
 
-  for(const c of selected){
-    const msg = buildMessageFor(c, body);
+  contacts.forEach((c, idx)=>{
+    if(!c.selected) return;
+    const msg = buildMessageFor(c, idx, body);
     const wrap = document.createElement('div');
     wrap.className='msg';
     const hasAttach = (c.attachCount||0)>0;
@@ -391,7 +445,7 @@ el('#generateMsgs').addEventListener('click', ()=>{
       <pre>${msg}</pre>
       <div class="toolbar" style="margin-top:8px">
         <button class="btn" data-copy>Copiar mensagem</button>
-        ${hasAttach ? `<button class="btn ghost" data-dl>Baixar CSV (${c.attachCount})</button>` : `<span class="muted">Sem linhas para este prefixo</span>`}
+        ${hasAttach ? `<button class="btn ghost" data-dl>Baixar CSV (${c.attachCount})</button>` : `<span class="muted">Sem linhas para este contato</span>`}
       </div>
     `;
     target.appendChild(wrap);
@@ -410,14 +464,13 @@ el('#generateMsgs').addEventListener('click', ()=>{
     // download csv por contato
     if(hasAttach){
       wrap.querySelector('[data-dl]').addEventListener('click', ()=>{
-        const pref = String(c.prefixo).trim();
-        const rows = groupedByPrefix[pref]||[];
+        const rows = groupedRowsByContact.get(idx) || [];
         const csv = toCSV(rows, attachHeaders);
         const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-        downloadBlob(`${pref} - ${titleCaseName(c.nome)}.csv`, blob);
+        downloadBlob(`${String(c.prefixo||'sem-prefixo')} - ${titleCaseName(c.nome)}.csv`, blob);
       });
     }
-  }
+  });
 });
 
 // Export CSV de selecionados (planejamento)
