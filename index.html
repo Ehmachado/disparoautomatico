@@ -2,522 +2,461 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8" />
-<title>Teams – Mensagem Agregada por Prefixo (Contatos colados + 1 planilha)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<!-- MSAL -->
-<script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js" crossorigin="anonymous"></script>
-<!-- SheetJS para XLSX/CSV -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.2/dist/xlsx.full.min.js"></script>
+<title>SUPER BARREIRAS</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <style>
-:root{--bg:#0a0a0b;--card:#111318;--text:#e9ecf1;--muted:#9aa5b1;--accent:#ffd400;--line:#23262d}
-*{box-sizing:border-box}
-body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text)}
-.wrap{max-width:1200px;margin:28px auto;padding:0 16px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-top:18px}
-h1,h3{margin:0 0 8px 0}
-.badge{background:var(--accent);color:#1a1a1a;font-weight:700;padding:4px 10px;border-radius:999px;font-size:12px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-label{font-size:12px;color:var(--muted);display:block;margin-bottom:6px}
-input,select,textarea{width:100%;background:#0d0f14;color:var(--text);border:1px solid var(--line);border-radius:12px;padding:10px 12px;outline:none}
-textarea{min-height:140px;resize:vertical}
-button{background:linear-gradient(180deg,#ffd400,#ffc300);color:#1a1a1a;border:none;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer}
-button.secondary{background:#1a1f28;color:var(--text);border:1px solid var(--line)}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap}
-.muted{color:var(--muted);font-size:12px}
-.pill{padding:6px 10px;border:1px solid var(--line);border-radius:999px;display:inline-flex;align-items:center;gap:8px}
-.ok{color:#00d48b;font-weight:700}.warn{color:#ff7a1a;font-weight:700}.error{color:#ff5b6b;font-weight:700}
-.small{font-size:12px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-table.preview{border-collapse:collapse;width:100%;font-size:12px}
-table.preview th,table.preview td{border:1px solid var(--line);padding:6px 8px}
-pre#log{white-space:pre-wrap;max-height:260px;overflow:auto;background:#0d0f14;border-radius:12px;border:1px solid var(--line);padding:12px}
-.kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:#0d0f14;border:1px solid var(--line);border-radius:8px;padding:2px 6px}
+  :root{
+    --bb-yellow:#FFCC00;
+    --bb-blue:#003399;
+    --ink:#0c1424;
+    --muted:#6b7280;
+    --bg:#f3f6ff;           
+    --bg-accent:#fff7d1;    
+    --bg-accent-2:#e8f7ff;  
+    --card:#ffffff;
+    --radius:12px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:linear-gradient(180deg, var(--bg-accent-2), var(--bg));color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .page{max-width:980px;margin:16px auto 32px;padding:0 10px;}
+  .titlecard{
+    background:linear-gradient(135deg,var(--bb-yellow),#ffe480);
+    border:1px solid #f3c300;color:#0b0b0b;border-radius:var(--radius);
+    padding:8px 10px;display:flex;justify-content:space-between;align-items:center;
+    box-shadow:0 6px 24px rgba(0,0,0,.08);
+    margin-bottom:6px;
+  }
+  h1{font-size:18px;margin:0 0 2px 0;letter-spacing:.2px;}
+  .subtitle{margin:0;font-weight:700;color:#0c2a66;font-size:12px;opacity:.95}
+  .actions{display:flex;gap:6px;flex-wrap:wrap}
+  button,.ghost{border:none;border-radius:8px;padding:6px 8px;font-weight:700;cursor:pointer;font-size:12px;}
+  .primary{background:var(--bb-blue);color:#fff;box-shadow:0 6px 18px rgba(0,51,153,.28)}
+  .ghost{background:#f2f6ff;color:#0c2a66;border:1px solid #cfe0ff}
+
+  .card{margin-top:0;background:var(--card);border-radius:var(--radius);padding:10px;border:1px solid #e6e8ef;box-shadow:0 6px 20px rgba(0,0,0,.06);}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  @media (max-width:860px){ .grid{ grid-template-columns:1fr; } }
+  .field{display:flex;flex-direction:column;gap:4px;background:linear-gradient(180deg,#fafbff,var(--bg-accent));border:1px solid #eef0f6;border-radius:10px;padding:8px 8px;}
+  .field label{font-size:11px;color:#193057;font-weight:800;line-height:1.1;}
+  input[type="text"].money,input[type="text"].percent,input[type="text"].ro,select,textarea,input[type="date"],input[type="text"]{
+    width:100%;padding:6px 8px;border:1px solid #dde3f3;border-radius:8px;background:#fff;font-size:12px;font-weight:700;color:#0f172a;line-height:1.1;
+  }
+  textarea{min-height:64px;resize:vertical;font-weight:600}
+  input[readonly]{background:#f7f7fb;}
+  .hint{font-size:10px;color:#6b7280}
+  .kpi{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .pill{padding:6px 8px;border-radius:999px;font-weight:800;background:#eef2ff;border:1px dashed #c7d2fe;color:#1e40af;font-size:11px;}
+
+  .subtitle-sep{
+    grid-column:1 / -1; margin:0; padding:6px 8px;
+    background:linear-gradient(90deg,#fff3b0,#ffe88f);
+    border:1px solid #f3c300;border-radius:9px;
+    font-weight:900;color:#0f274d;font-size:12px;letter-spacing:.2px;
+  }
+
+  .legend{margin-top:8px;font-size:11px;color:#374151;background:#fff8db;border:1px solid #f3c300;padding:6px 8px;border-radius:9px;line-height:1.25}
+  .legend b{color:#1f2937}
+
+  .print-value{display:none;font-weight:800;font-size:12px;color:#0f172a;background:#fff;border:1px solid #dde3f3;border-radius:8px;padding:6px 8px;}
+  .print-mode .field input,.print-mode .field select,.print-mode .field textarea{display:none;}
+  .print-mode .field .print-value{display:block;}
+
+  #capture{border:2px solid var(--bb-blue);border-radius:14px;padding:10px;background:linear-gradient(180deg,#fff,#f8fbff);box-shadow:0 8px 28px rgba(0,35,90,.12) inset;}
+
+  /* Ultra-condensed for export (3 columns, tiny gaps) */
+  .ultra #capture{max-width:794px;margin:0 auto;}
+  .ultra .grid{gap:2px; grid-template-columns:1fr 1fr 1fr;}
+  .ultra .field{padding:5px;border-radius:7px;background:linear-gradient(180deg,#ffffff,#fff6bf);}
+  .ultra .field label{font-size:10px;}
+  .ultra input, .ultra select, .ultra textarea{padding:4px 5px;font-size:10px;border-radius:6px;}
+  .ultra h1{font-size:16px;}
+  .ultra .subtitle{font-size:11px;}
+  .ultra .titlecard{padding:6px 8px;border-radius:10px;}
+  .ultra .pill{padding:3px 5px;font-size:10px;}
+  .ultra .print-value{padding:4px 5px;font-size:10px;}
+  .ultra .subtitle-sep{padding:4px 6px;font-size:10px;border-radius:7px;}
+
+  /* Ultra+ overrides: 3 cols & tighter compaction for export */
+  .ultra #capture{max-width:794px;margin:0 auto;}
+  .ultra .grid{gap:2px !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important;}
+  .ultra .field{padding:3px !important;border-radius:6px !important;}
+  .ultra .field label{font-size:9px !important; line-height:1.05;}
+  .ultra input, .ultra select, .ultra textarea{padding:3px 4px !important;font-size:9px !important;border-radius:5px !important;}
+  .ultra h1{font-size:15px !important;}
+  .ultra .subtitle{font-size:10px !important;}
+  .ultra .titlecard{padding:5px 6px !important;border-radius:8px !important;}
+  .ultra .pill{padding:2px 4px !important;font-size:9px !important;}
+  .ultra .print-value{padding:3px 4px !important;font-size:9px !important;}
+  .ultra .subtitle-sep{padding:3px 5px !important;font-size:9px !important;border-radius:6px !important;}
+
 </style>
 </head>
-<body>
-<div class="wrap">
-  <div style="display:flex;align-items:center;gap:12px">
-    <h1>Disparo no Teams por Prefixo</h1>
-    <span class="badge">Contatos colados + 1 planilha</span>
-  </div>
-  <p class="muted">Para cada <span class="kbd">prefixo</span> comum aos contatos e à planilha, envia <b>1 mensagem</b> com: saudação “<b>Olá &lt;nome&gt;, tudo bem?</b>” + seu texto + (opcional) tabela agregada das linhas desse prefixo.</p>
-
-  <!-- 1) Auth -->
-  <div class="card">
-    <h3>1) MSAL / Graph</h3>
-    <div class="row">
-      <div><label>Tenant ID</label><input id="tenantId" placeholder="11111111-2222-3333-4444-555555555555"></div>
-      <div><label>Client ID</label><input id="clientId" placeholder="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"></div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <div><label>Redirect URI</label><input id="redirectUri" placeholder="https://seu-site.netlify.app/"></div>
-      <div><label>Scopes</label><input id="scopes" value="ChannelMessage.Send Chat.ReadWrite Group.Read.All Chat.Read User.Read.All"></div>
-    </div>
-    <div class="toolbar" style="margin-top:12px">
-      <button id="btnInit">Inicializar MSAL</button>
-      <button id="btnLogin" class="secondary">Entrar</button>
-      <span id="authStatus" class="pill"><span class="warn">Deslogado</span></span>
-    </div>
-  </div>
-
-  <!-- 2) Contatos colados -->
-  <div class="card">
-    <h3>2) Contatos (colar como planilha)</h3>
-    <label>Cole aqui (inclua cabeçalho): <b>prefixo</b> | <b>nome</b> | <b>email</b> — pode colar direto do Excel/Sheets</label>
-    <textarea id="contactsPaste" placeholder="prefixo\tnome\temail
-123\tFulano da Silva\tfulano@empresa.com
-456\tCiclano Souza\tciclano@empresa.com"></textarea>
-    <div class="toolbar" style="margin-top:10px">
-      <button id="btnParseContacts" class="secondary">Ler contatos colados</button>
-      <span id="contactsStatus" class="pill"><span class="muted">Aguardando colagem…</span></span>
-    </div>
-    <div style="margin-top:10px">
-      <div id="contactsPreview" class="small muted">Prévia aparecerá aqui.</div>
-    </div>
-
-    <!-- Picker de Prefixos -->
-    <div style="margin-top:12px">
-      <label>Prefixos a enviar (dos contatos colados)</label>
-      <div class="toolbar" style="margin-bottom:6px">
-        <button id="btnPickAll" class="secondary">Selecionar todos</button>
-        <button id="btnPickNone" class="secondary">Limpar seleção</button>
-      </div>
-      <div id="prefixPicker" class="small" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px"></div>
-    </div>
-  </div>
-
-  <!-- 3) Planilha de Linhas -->
-  <div class="card">
-    <h3>3) Planilha de Linhas (XLSX/CSV)</h3>
-    <div class="row">
+<body class="compact">
+<div class="page">
+  <div id="capture" class="card">
+    <div class="titlecard">
       <div>
-        <label>Arquivo — coluna obrigatória: <b>prefixo</b></label>
-        <input id="fileLines" type="file" accept=".xlsx,.xls,.csv" />
+        <h1>SUPER BARREIRAS</h1>
+        <div class="subtitle">Super Barreiras - Análise de Operações</div>
       </div>
-      <div>
-        <label>Incluir tabela agregada das linhas?</label>
-        <select id="includeTable">
-          <option value="yes">Sim, incluir tabela</option>
-          <option value="no">Não, enviar só o texto</option>
+      <div class="actions">
+        <button class="ghost" id="togglePrint">Pré-visualizar impressão</button>
+        <button class="primary" id="savePng">Salvar em imagem (PNG)</button>
+      </div>
+    </div>
+    <div class="grid">
+
+      <div class="field">
+        <label for="alcada">Alçada</label>
+        <input id="alcada" type="text" placeholder="">
+        <div class="print-value" data-from="alcada"></div>
+      </div>
+
+      <div class="field">
+        <label for="mci">MCI</label>
+        <input id="mci" type="text" placeholder="">
+        <div class="print-value" data-from="mci"></div>
+      </div>
+
+      <div class="field">
+        <label for="cliente">Cliente</label>
+        <input id="cliente" type="text" placeholder="">
+        <div class="print-value" data-from="cliente"></div>
+      </div>
+
+      <div class="field">
+        <label for="idade-do-cliente">Idade do Cliente</label>
+        <input id="idade-do-cliente" type="text" placeholder="">
+        <div class="print-value" data-from="idade-do-cliente"></div>
+      </div>
+
+      <div class="field">
+        <label for="cliente-desde">Cliente desde (Data)</label>
+        <input id="cliente-desde" type="date">
+        <div class="print-value" data-from="cliente-desde"></div>
+      </div>
+
+      <div class="field">
+        <label for="proposta">Proposta</label>
+        <input id="proposta" type="text" placeholder="">
+        <div class="print-value" data-from="proposta"></div>
+      </div>
+
+      <div class="field">
+        <label for="linha-de-credito">Linha de Crédito</label>
+        <input id="linha-de-credito" type="text" placeholder="">
+        <div class="print-value" data-from="linha-de-credito"></div>
+      </div>
+
+      <div class="field">
+        <label for="item-financiado">Item Financiado</label>
+        <input id="item-financiado" type="text" placeholder="">
+        <div class="print-value" data-from="item-financiado"></div>
+      </div>
+
+      <div class="field">
+        <label for="rating">Rating</label>
+        <input id="rating" type="text" placeholder="">
+        <div class="print-value" data-from="rating"></div>
+      </div>
+      <div class="subtitle-sep">-----------------------------------------------------------------------------------------------------------------------------------</div>
+
+
+      <div class="field">
+        <label for="autorizacao-grao">Autorização Grão</label>
+        <textarea id="autorizacao-grao" placeholder=""></textarea>
+        <div class="print-value" data-from="autorizacao-grao"></div>
+      </div>
+
+      <div class="field">
+        <label for="valor-operacao">Valor Operação (R$)</label>
+        <input id="valor-operacao" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="valor-operacao"></div>
+      </div>
+
+      <div class="field">
+        <label for="seguros-quais">Seguros (Quais?)</label>
+        <input id="seguros-quais" type="text" placeholder="">
+        <div class="print-value" data-from="seguros-quais"></div>
+      </div>
+
+      <div class="field">
+        <label for="rs-contratado-na-operacao">RS contratado na operação (R$)</label>
+        <input id="rs-contratado-na-operacao" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="rs-contratado-na-operacao"></div>
+      </div>
+
+      <div class="field">
+        <label for="limite-de-credito-vigencia-e-risco">Limite de Crédito (Vigência e Risco)</label>
+        <input id="limite-de-credito-vigencia-e-risco" type="text" placeholder="">
+        <div class="print-value" data-from="limite-de-credito-vigencia-e-risco"></div>
+      </div>
+
+      <div class="field">
+        <label for="condicionante-do-lc-qual">Condicionante do LC (Qual?)</label>
+        <input id="condicionante-do-lc-qual" type="text" placeholder="">
+        <div class="print-value" data-from="condicionante-do-lc-qual"></div>
+      </div>
+      <div class="subtitle-sep">RECEITA BRUTA - CLIENTES 03-20-41 SELECIONAR LC, F12-6-F9</div>
+
+      <div class="field">
+        <label for="receita-bruta-total-obtida">Receita Bruta Total Obtida (R$)</label>
+        <input id="receita-bruta-total-obtida" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="receita-bruta-total-obtida"></div>
+      </div>
+
+      <div class="field">
+        <label for="receita-bruta-total-prevista">Receita Bruta Total Prevista (R$)</label>
+        <input id="receita-bruta-total-prevista" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="receita-bruta-total-prevista"></div>
+      </div>
+
+      <div class="field">
+        <label for="resultado-operacional-agropecuario-obtido">Resultado Operacional Agropecuário Obtido (R$)</label>
+        <input id="resultado-operacional-agropecuario-obtido" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="resultado-operacional-agropecuario-obtido"></div>
+      </div>
+
+      <div class="field">
+        <label for="resultado-operacional-agropecuario-previsto">Resultado Operacional Agropecuário Previsto (R$)</label>
+        <input id="resultado-operacional-agropecuario-previsto" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="resultado-operacional-agropecuario-previsto"></div>
+      </div>
+
+      <div class="field">
+        <label for="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho">Pecuária: Quantidade de animais compatível com área do cliente? (Se não, justifique o apascentamento aqui e no despacho)</label>
+        <select id="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho">
+          <option value="" selected disabled>Selecione</option>
+          <option>Sim</option>
+          <option>Não</option>
+          <option>Não se aplica</option>
         </select>
+        <div class="print-value" data-from="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho"></div>
+        <label for="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho-justificativa">Justifique</label>
+        <textarea id="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho-justificativa" placeholder="Descreva a justificativa"></textarea>
+        <div class="print-value" data-from="pecuaria-quantidade-de-animais-compativel-com-area-do-cliente-se-nao-justifique-o-apascentamento-aqui-e-no-despacho-justificativa"></div>
       </div>
-    </div>
-    <div class="toolbar" style="margin-top:12px">
-      <button id="btnJoin" class="secondary">Juntar por prefixo</button>
-      <span id="joinStatus" class="pill"><span class="muted">Aguardando…</span></span>
-    </div>
-    <div style="margin-top:10px" id="joinPreview" class="small muted">Prévia do join aparecerá aqui.</div>
-  </div>
 
-  <!-- 4) Destino -->
-  <div class="card">
-    <h3>4) Destino</h3>
-    <div class="row">
-      <div>
-        <label>Modo de envio</label>
-        <select id="dmMode">
-          <option value="yes">DM 1:1 para o email colado</option>
-          <option value="no">Enviar no Canal selecionado</option>
-        </select>
+      <div class="field">
+        <label for="garantias">Garantias</label>
+        <input id="garantias" type="text" placeholder="">
+        <div class="print-value" data-from="garantias"></div>
       </div>
-      <div>
-        <label class="muted">Se Canal estiver selecionado, carregue Time/Canal abaixo</label>
-        <div class="toolbar" style="margin-top:6px">
-          <button id="btnLoadTeams" class="secondary">Carregar Times & Canais</button>
-        </div>
-      </div>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <div><label>Time</label><select id="teamSelect"><option value="">— selecione —</option></select></div>
-      <div><label>Canal</label><select id="channelSelect"><option value="">— selecione —</option></select></div>
-    </div>
-  </div>
-
-  <!-- 5) Mensagem -->
-  <div class="card">
-    <h3>5) Mensagem</h3>
-    <div class="row">
-      <div>
-        <label>Seu texto (após a saudação automática “Olá &lt;nome&gt;, tudo bem?”)</label>
-        <textarea id="freeMessage" placeholder="Escreva aqui o restante da mensagem que será igual para todos os selecionados."></textarea>
-      </div>
-      <div>
-        <label>Prévia</label>
-        <div id="previewMsg" style="background:#0d0f14;border:1px solid var(--line);border-radius:12px;padding:12px;min-height:140px"></div>
-      </div>
-    </div>
-    <div class="toolbar" style="margin-top:12px">
-      <button id="btnSendNow">Enviar agora (para os prefixos selecionados)</button>
-      <span id="sendStatus" class="pill"><span class="muted">Pronto</span></span>
-    </div>
-  </div>
-
-  <!-- Logs -->
-  <div class="card">
-    <h3>Logs</h3>
-    <pre id="log"></pre>
-  </div>
+      <div class="subtitle-sep">-----------------------------------------------------------------------------------------------------------------------------------</div>
 </div>
 
+      <div class="field">
+        <label for="share-bb-preenchimento-automatico">Share BB ( preenchimento automático) (%) = Endiv. BB ÷ Endiv. SFN</label>
+        <input id="share-bb-preenchimento-automatico" class="percent" type="text" readonly placeholder="0,00%">
+        <div class="print-value" data-from="share-bb-preenchimento-automatico"></div>
+      </div>
+
+      <div class="field">
+        <label for="recursos-liquidos">Recursos liquidos (R$)</label>
+        <input id="recursos-liquidos" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="recursos-liquidos"></div>
+      </div>
+
+      <div class="field">
+        <label for="patrimonio-total">Patrimônio Total (R$)</label>
+        <input id="patrimonio-total" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="patrimonio-total"></div>
+      </div>
+
+      <div class="field">
+        <label for="endividamento-no-sfn">Endividamento no SFN (R$)</label>
+        <input id="endividamento-no-sfn" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="endividamento-no-sfn"></div>
+      </div>
+
+      <div class="field">
+        <label for="endividamento-no-bb">Endividamento no BB (R$)</label>
+        <input id="endividamento-no-bb" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="endividamento-no-bb"></div>
+      </div>
+
+      <div class="field">
+        <label for="inad-agro-agencia-rel-5398">Inad Agro Agência (rel 5398) (R$)</label>
+        <input id="inad-agro-agencia-rel-5398" class="money" type="text" inputmode="decimal" placeholder="0,00">
+        <div class="print-value" data-from="inad-agro-agencia-rel-5398"></div>
+      </div>
+
+      <div class="field">
+        <label for="proposta-customizada">Proposta Customizada</label>
+        <select id="proposta-customizada">
+          <option value="" selected disabled>Selecione</option>
+          <option>Sim</option>
+          <option>Não</option>
+          <option>Não se aplica</option>
+        </select>
+        <div class="print-value" data-from="proposta-customizada"></div>
+      </div>
+
+      <div class="field">
+        <label for="de-operacoes-do-cliente-com-garantia-hipotecaria">% de operações do cliente Com garantia Hipotecária (%)</label>
+        <input id="de-operacoes-do-cliente-com-garantia-hipotecaria" class="percent" type="text" inputmode="decimal" placeholder="0,00%">
+        <div class="print-value" data-from="de-operacoes-do-cliente-com-garantia-hipotecaria"></div>
+      </div>
+
+      <div class="field">
+        <label for="rende-facil">Rende Fácil</label>
+        <select id="rende-facil">
+          <option value="" selected disabled>Selecione</option>
+          <option>Sim</option>
+          <option>Não</option>
+          <option>Não se aplica</option>
+        </select>
+        <div class="print-value" data-from="rende-facil"></div>
+      </div>
+    </div>
+    <div class="legend">
+      <b>Exporte e nos envie a imagem para que sua operação seja votada</b><br>
+    </div>
+  </div>
+  <footer>Use <strong>Salvar em imagem</strong> para exportar o painel completo.</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" crossorigin="anonymous"></script>
 <script>
-/* ========== Utils ========== */
-const $ = id => document.getElementById(id);
-const logEl = $('log');
-function log(msg, type="info"){
-  const ts = new Date().toLocaleString();
-  logEl.textContent += `[${ts}] ${msg}\n`;
-  logEl.scrollTop = logEl.scrollHeight;
-  if(type==="ok") $('sendStatus').innerHTML = '<span class="ok">OK</span>';
-  if(type==="error") $('sendStatus').innerHTML = '<span class="error">Erro</span>';
-}
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function normalizeHeaders(hs){ return hs.map(h => String(h||'').toLowerCase().trim()); }
-const toKey = s => String(s ?? '').trim();
+  const fmtBRL = new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL', maximumFractionDigits:2 });
+  const fmtPct = new Intl.NumberFormat('pt-BR', { style:'percent', minimumFractionDigits:2, maximumFractionDigits:2 });
 
-/* ========== MSAL / Graph ========== */
-let msalInstance=null, account=null, accessToken=null, scopes=[];
-$('btnInit').addEventListener('click', () => {
-  const tenantId = toKey($('tenantId').value);
-  const clientId = toKey($('clientId').value);
-  const redirectUri = toKey($('redirectUri').value);
-  scopes = toKey($('scopes').value).split(/\s+/).filter(Boolean);
-  if(!tenantId || !clientId || !redirectUri){ alert('Preencha Tenant ID, Client ID, Redirect URI'); return; }
-  msalInstance = new msal.PublicClientApplication({
-    auth:{ clientId, authority:`https://login.microsoftonline.com/${tenantId}`, redirectUri },
-    cache:{ cacheLocation:'localStorage' }
-  });
-  msalInstance.handleRedirectPromise().catch(e=>log('handleRedirect erro: '+e,'error'));
-  log('MSAL inicializado. Faça login.','ok');
-});
-$('btnLogin').addEventListener('click', async ()=>{
-  if(!msalInstance) return alert('Inicialize MSAL primeiro.');
-  try{
-    const resp = await msalInstance.loginPopup({ scopes });
-    account = resp.account; msalInstance.setActiveAccount(account);
-    $('authStatus').innerHTML = `<span class="ok">Logado</span><span class="small mono" style="margin-left:8px">${account.username}</span>`;
-    await getToken(); log('Autenticado.','ok');
-  }catch(e){ log('Falha login: '+e,'error'); }
-});
-async function getToken(){
-  const req = { scopes, account: msalInstance.getActiveAccount() };
-  try{ const r=await msalInstance.acquireTokenSilent(req); accessToken=r.accessToken; return accessToken; }
-  catch{ const r=await msalInstance.acquireTokenPopup(req); accessToken=r.accessToken; return accessToken; }
-}
-async function graph(path, options={}){
-  const token = accessToken || await getToken();
-  const r = await fetch(`https://graph.microsoft.com/v1.0${path}`, { ...options, headers:{ 'Authorization':`Bearer ${token}`, 'Content-Type':'application/json', ...(options.headers||{}) }});
-  if(!r.ok){ throw new Error(`Graph ${path} -> ${r.status}: ${await r.text()}`); }
-  return r.json();
-}
-
-/* ========== Contatos colados + picker de prefixos ========== */
-let contactsRows = []; // [{prefixo, nome, email}]
-let selectedPrefixes = new Set();
-
-$('btnParseContacts').addEventListener('click', ()=>{
-  try{
-    contactsRows = parsePastedContacts($('contactsPaste').value || '');
-    if(!contactsRows.length) throw new Error('Nenhuma linha válida.');
-    $('contactsStatus').innerHTML = `<span class="ok">${contactsRows.length} contato(s)</span>`;
-    renderContactsPreview();
-    buildPrefixPicker(contactsRows);
-    renderTemplatePreview();
-    log('Contatos colados lidos.','ok');
-  }catch(e){
-    $('contactsStatus').innerHTML = `<span class="error">Erro</span>`;
-    log('Falha lendo contatos: '+e,'error');
+  function toNumberBR(v){
+    if(!v) return 0;
+    v = String(v).replace(/[^\d,.-]/g,'').replace(/\.(?=\d{3})/g,'');
+    v = v.replace(',', '.');
+    const n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
   }
-});
-
-function parsePastedContacts(text){
-  const rows = text.trim().split(/\r?\n/).map(l => l.split(/\t|;|,/));
-  if(!rows.length) return [];
-  const headers = rows[0].map(h => String(h||'').trim());
-  const lower = normalizeHeaders(headers);
-  const idxP = lower.indexOf('prefixo');
-  const idxN = lower.indexOf('nome');
-  const idxE = lower.indexOf('email');
-  if(idxP<0 || idxN<0 || idxE<0) throw new Error('Cabeçalhos obrigatórios: prefixo, nome, email');
-  const out=[];
-  for(let i=1;i<rows.length;i++){
-    const r = rows[i]; if(!r || !r.length) continue;
-    const prefixo = toKey(r[idxP]||''); const nome=toKey(r[idxN]||''); const email=toKey(r[idxE]||'');
-    if(!prefixo || !email) continue;
-    out.push({ prefixo, nome, email });
+  function setPrintMirror(id, text){
+    const span = document.querySelector(`.print-value[data-from="${id}"]`);
+    if(span){ span.textContent = text || ''; }
   }
-  return out;
-}
 
-function renderContactsPreview(){
-  if(!contactsRows.length){ $('contactsPreview').innerHTML='Sem contatos.'; return; }
-  const cols = ['prefixo','nome','email'];
-  const head = cols.map(c=>`<th>${c}</th>`).join('');
-  const body = contactsRows.slice(0,10).map(r=>`<tr>${cols.map(c=>`<td>${escapeHtml(r[c]||'')}</td>`).join('')}</tr>`).join('');
-  $('contactsPreview').innerHTML = `<div style="overflow:auto"><table class="preview"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
-}
+  function handleMoneyInput(e){
+    const el = e.target;
+    const raw = toNumberBR(el.value);
+    el.dataset.raw = raw;
+    const pretty = fmtBRL.format(raw);
+    setPrintMirror(el.id, pretty);
+    updateShare();
+  }
+  function handlePercentInput(e){
+    const el = e.target;
+    const raw = toNumberBR(el.value)/100.0;
+    el.dataset.rawpct = raw;
+    const pretty = fmtPct.format(raw);
+    setPrintMirror(el.id, pretty);
+  }
+  function bindMirror(el){ el.addEventListener('input', ()=> setPrintMirror(el.id, el.value || '')); }
 
-function buildPrefixPicker(fromRows) {
-  const box = $('prefixPicker');
-  box.innerHTML = '';
-  const uniq = Array.from(new Set(fromRows.map(r => String(r.prefixo || '').trim()).filter(Boolean))).sort();
-  if (!uniq.length) { box.innerHTML = '<span class="muted">Nenhum prefixo detectado.</span>'; return; }
-  // seleciona todos por padrão
-  selectedPrefixes = new Set(uniq);
-  const frag = document.createDocumentFragment();
-  for (const p of uniq) {
-    const id = 'px_' + p.replace(/[^a-z0-9_-]/gi, '_');
-    const wrap = document.createElement('label');
-    wrap.style.display = 'inline-flex';
-    wrap.style.alignItems = 'center';
-    wrap.style.gap = '6px';
-    wrap.innerHTML = `<input type="checkbox" id="${id}" checked> <span class="mono">${p}</span>`;
-    frag.appendChild(wrap);
-    frag.appendChild(document.createElement('div'));
-    setTimeout(() => {
-      const cb = $(id);
-      cb.addEventListener('change', () => {
-        if (cb.checked) selectedPrefixes.add(p); else selectedPrefixes.delete(p);
-        renderTemplatePreview();
-      });
+  // Mirror helpers for export
+  function syncAllToPrint(){
+    // Money
+    document.querySelectorAll('input.money').forEach(el=>{
+      let raw = el.dataset.raw;
+      if(raw === undefined || raw === ""){
+        raw = toNumberBR(el.value);
+        el.dataset.raw = raw;
+      }
+      setPrintMirror(el.id, fmtBRL.format(parseFloat(raw||0)));
     });
+    // Percent (editable)
+    document.querySelectorAll('input.percent:not([readonly])').forEach(el=>{
+      let rp = el.dataset.rawpct;
+      if(rp === undefined || rp === ""){
+        rp = toNumberBR(el.value)/100.0;
+        el.dataset.rawpct = rp;
+      }
+      setPrintMirror(el.id, fmtPct.format(parseFloat(rp||0)));
+    });
+    // Percent readonly (Share)
+    document.querySelectorAll('input.percent[readonly]').forEach(el=>{
+      setPrintMirror(el.id, el.value || "0,00%");
+    });
+    // Date
+    document.querySelectorAll('input[type="date"]').forEach(el=>{
+      if(el.value){
+        const d = new Date(el.value);
+        const txt = d.toLocaleDateString('pt-BR', { timeZone:'UTC' });
+        setPrintMirror(el.id, txt);
+      }else{
+        setPrintMirror(el.id, "");
+      }
+    });
+    // Text + Textarea
+    document.querySelectorAll('textarea, input[type="text"]:not(.money):not(.percent)').forEach(el=>{
+      setPrintMirror(el.id, el.value || '');
+    });
+    // Selects
+    document.querySelectorAll('select').forEach(el=>{
+      setPrintMirror(el.id, el.value || '');
+    });
+    // Recompute Share at the end to ensure latest mirroring
+    updateShare();
   }
-  box.appendChild(frag);
-}
 
-$('btnPickAll').addEventListener('click', () => {
-  document.querySelectorAll('#prefixPicker input[type=checkbox]').forEach(cb => { cb.checked = true; });
-  selectedPrefixes = new Set(contactsRows.map(c => String(c.prefixo).trim()).filter(Boolean));
-  renderTemplatePreview();
-});
-
-$('btnPickNone').addEventListener('click', () => {
-  document.querySelectorAll('#prefixPicker input[type=checkbox]').forEach(cb => { cb.checked = false; });
-  selectedPrefixes.clear();
-  renderTemplatePreview();
-});
-
-/* ========== Planilha de Linhas + join ========== */
-let linesRows = [];   // todas as linhas
-let groups = [];      // [{prefixo, contatoRow, lines:[...]}]
-
-$('btnJoin').addEventListener('click', async ()=>{
-  try{
-    if(!contactsRows.length) throw new Error('Leia os contatos colados primeiro.');
-    const file = $('fileLines').files[0];
-    if(!file) throw new Error('Selecione a planilha de Linhas.');
-    linesRows = await readLinesSheet(file);
-
-    // indexar contatos por prefixo
-    const idxContacts = new Map();
-    for(const c of contactsRows){ const p=String(c.prefixo).trim(); if(p && !idxContacts.has(p)) idxContacts.set(p,c); }
-
-    // indexar linhas por prefixo (N por prefixo)
-    const idxLines = new Map();
-    for(const r of linesRows){
-      const p = toKey(r.prefixo||''); if(!p) continue;
-      if(!idxLines.has(p)) idxLines.set(p, []);
-      idxLines.get(p).push(r);
-    }
-
-    // montar grupos somente quando existir nos dois lados e estiver selecionado no picker
-    groups = [];
-    for(const [p, contato] of idxContacts.entries()){
-      if(!selectedPrefixes.has(p)) continue;
-      const arr = idxLines.get(p);
-      if(arr && arr.length) groups.push({ prefixo:p, contatoRow:contato, lines:arr });
-    }
-
-    $('joinStatus').innerHTML = `<span class="ok">${groups.length} prefixo(s) com match</span>`;
-    renderJoinPreview();
-    renderTemplatePreview();
-    log('Join concluído.','ok');
-  }catch(e){
-    $('joinStatus').innerHTML = `<span class="error">Erro</span>`;
-    log('Join falhou: '+e,'error');
-  }
-});
-
-async function readLinesSheet(file){
-  const buf = await file.arrayBuffer();
-  const wb = XLSX.read(buf, { type:'array' });
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
-  if(!rows.length) throw new Error('Planilha vazia.');
-  const headers = Object.keys(rows[0]); const lower = normalizeHeaders(headers);
-  if(!lower.includes('prefixo')) throw new Error('Coluna obrigatória "prefixo" ausente na planilha.');
-  // normalizar: manter originais e alias minúsculo
-  return rows.map(r=>{
-    const out={};
-    for(const k of Object.keys(r)){
-      out[k]=r[k];
-      const lk = String(k).toLowerCase().trim();
-      if(!(lk in out)) out[lk]=r[k];
-    }
-    return out;
+  // Event wiring
+  document.querySelectorAll('input.money').forEach(el=>{
+    el.addEventListener('input', handleMoneyInput);
+    el.dataset.raw = el.dataset.raw || 0;
   });
-}
+  document.querySelectorAll('input.percent').forEach(el=>{
+    if(!el.readOnly){
+      el.addEventListener('input', handlePercentInput);
+      el.dataset.rawpct = el.dataset.rawpct || 0;
+    }
+  });
+  document.querySelectorAll('textarea').forEach(bindMirror);
+  document.querySelectorAll('input[type="text"]:not(.money):not(.percent)').forEach(bindMirror);
+  document.querySelectorAll('input[type="date"]').forEach(bindMirror);
+  document.querySelectorAll('select').forEach(el=>{
+    el.addEventListener('change', ()=> setPrintMirror(el.id, el.value || ''));
+  });
 
-function renderJoinPreview(){
-  if(!groups.length){ $('joinPreview').innerHTML = 'Sem matches (verifique seleção de prefixos e a planilha).'; return; }
-  const sample = groups.slice(0,8).map(g => ({ prefixo:g.prefixo, contato:g.contatoRow.email, qtd_linhas:g.lines.length, ...g.lines[0] }));
-  const cols = Object.keys(sample[0]).slice(0,10);
-  const head = cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('');
-  const body = sample.map(r=>`<tr>${cols.map(c=>`<td>${escapeHtml(String(r[c]??''))}</td>`).join('')}</tr>`).join('');
-  $('joinPreview').innerHTML = `<div style="overflow:auto"><table class="preview"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table></div>`;
-}
-
-/* ========== Prévia da mensagem (saudação com nome + texto livre + tabela opcional) ========== */
-$('freeMessage').addEventListener('input', renderTemplatePreview);
-$('includeTable').addEventListener('change', renderTemplatePreview);
-
-function renderTemplatePreview(){
-  const box = $('previewMsg');
-  const freeText = $('freeMessage').value || '';
-  const includeTable = $('includeTable').value === 'yes';
-
-  // Prioriza prévia de um grupo real (com linhas)
-  if(groups.length){
-    const g = groups[0];
-    const saudacao = `<p>Olá ${escapeHtml(g.contatoRow.nome || '')}, tudo bem?</p>`;
-    const corpo = freeText ? `<p>${escapeHtml(freeText)}</p>` : '';
-    const tabela = (includeTable && g.lines?.length) ? ('<div style="height:8px"></div>' + linesArrayToTableHTML(g.lines)) : '';
-    box.innerHTML = saudacao + corpo + tabela;
-    return;
+  const idEndivSfn = 'endividamento-no-sfn';
+  const idEndivBb  = 'endividamento-no-bb';
+  const idShare    = 'share-bb-preenchimento-automatico';
+  function updateShare(){
+    if(!idEndivSfn || !idEndivBb || !idShare) return;
+    const sfnEl = document.getElementById(idEndivSfn);
+    const bbEl  = document.getElementById(idEndivBb);
+    const shareEl = document.getElementById(idShare);
+    if(!sfnEl || !bbEl || !shareEl) return;
+    const sfn = parseFloat(sfnEl.dataset.raw || 0);
+    const bb  = parseFloat(bbEl.dataset.raw  || 0);
+    const share = (sfn > 0) ? (bb/sfn) : 0;
+    const text = fmtPct.format(share);
+    shareEl.value = text;
+    setPrintMirror(idShare, text);
   }
 
-  // Sem grupos: usa primeiro prefixo selecionado (ou primeiro contato)
-  const firstSel = Array.from(selectedPrefixes)[0];
-  const contato = contactsRows.find(c => String(c.prefixo).trim() === firstSel) || contactsRows[0];
-  if(!contato){ box.innerHTML = '<span class="muted">Cole contatos ou faça o join primeiro…</span>'; return; }
-  const saudacao = `<p>Olá ${escapeHtml(contato.nome || '')}, tudo bem?</p>`;
-  const corpo = freeText ? `<p>${escapeHtml(freeText)}</p>` : '';
-  box.innerHTML = saudacao + corpo + `<div class="muted small" style="margin-top:6px">(Sem planilha agregada)</div>`;
-}
+  const toggleBtn = document.getElementById('togglePrint');
+  toggleBtn.addEventListener('click', ()=>{
+    document.body.classList.toggle('print-mode');
+    toggleBtn.textContent = document.body.classList.contains('print-mode') ? 'Sair da pré-visualização' : 'Pré-visualizar impressão';
+  });
 
-function linesArrayToTableHTML(lines){
-  if(!lines?.length) return '<i>(sem linhas)</i>';
-  const colSet=new Set(); lines.forEach(l=>Object.keys(l).forEach(k=>colSet.add(k)));
-  const cols=[...colSet];
-  const head = cols.map(c=>`<th>${escapeHtml(c)}</th>`).join('');
-  const body = lines.map(l=>`<tr>${cols.map(c=>`<td>${escapeHtml(String(l[c]??''))}</td>`).join('')}</tr>`).join('');
-  return `<table class="preview"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
-}
+  document.getElementById('savePng').addEventListener('click', async ()=>{
+    const wasPrint = document.body.classList.contains('print-mode');
+    document.body.classList.add('ultra'); // super compacto e 3 colunas
+    // Sync all fields BEFORE hiding inputs
+    syncAllToPrint();
+    if(!wasPrint) document.body.classList.add('print-mode');
+    const node = document.querySelector('#capture');
+    const scale = window.devicePixelRatio > 1 ? 2 : 1;
+    const canvas = await html2canvas(node, {backgroundColor:'#ffffff', scale});
+    const link = document.createElement('a');
+    link.download = 'super-barreiras-analise-ultra-compact.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    if(!wasPrint) document.body.classList.remove('print-mode');
+    document.body.classList.remove('ultra');
+  });
 
-/* ========== Destino (Teams) ========== */
-$('btnLoadTeams').addEventListener('click', async ()=>{
-  try{
-    const data = await graph('/me/joinedTeams');
-    const sel=$('teamSelect'); sel.innerHTML='<option value="">— selecione —</option>';
-    (data.value||[]).forEach(t=>{ const o=document.createElement('option'); o.value=t.id; o.textContent=t.displayName; sel.appendChild(o); });
-    log('Times carregados.','ok');
-  }catch(e){ log('Listar times: '+e,'error'); }
-});
-$('teamSelect').addEventListener('change', async ev=>{
-  const teamId = ev.target.value; const ch=$('channelSelect'); ch.innerHTML='<option value="">— selecione —</option>';
-  if(!teamId) return;
-  try{
-    const data = await graph(`/teams/${teamId}/channels`);
-    (data.value||[]).forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.displayName; ch.appendChild(o); });
-    log('Canais carregados.','ok');
-  }catch(e){ log('Listar canais: '+e,'error'); }
-});
-
-/* ========== Envio (sempre 1 por prefixo selecionado) ========== */
-$('btnSendNow').addEventListener('click', async ()=>{
-  try{
-    if(!contactsRows.length) return alert('Cole e leia os contatos primeiro.');
-    const dm = $('dmMode').value === 'yes';
-    const includeTable = $('includeTable').value === 'yes';
-    const freeText = $('freeMessage').value || '';
-
-    let teamId='', channelId='';
-    if(!dm){
-      teamId = toKey($('teamSelect').value); channelId = toKey($('channelSelect').value);
-      if(!teamId || !channelId) return alert('Selecione Time + Canal.');
-    }
-
-    const targets = Array.from(selectedPrefixes);
-    if (!targets.length) return alert('Selecione ao menos um prefixo no picker.');
-
-    // Se houver planilha e join, estabeleça groups filtrados pelos selecionados
-    let payloadGroups = [];
-    if (linesRows.length) {
-      // construir idx de linhas por prefixo
-      const idxLines = new Map();
-      for(const r of linesRows){
-        const p = toKey(r.prefixo||''); if(!p) continue;
-        if(!idxLines.has(p)) idxLines.set(p, []);
-        idxLines.get(p).push(r);
-      }
-      // para cada prefixo selecionado, se tiver contato e linhas, monta grupo; se não tiver linhas, envia sem tabela
-      payloadGroups = targets.map(p => {
-        const contatoRow = contactsRows.find(c => String(c.prefixo).trim() === p);
-        const lines = (idxLines.get(p) || []);
-        return contatoRow ? { prefixo:p, contatoRow, lines } : null;
-      }).filter(Boolean);
-    } else {
-      // Sem planilha: grupos sintéticos só com contato
-      payloadGroups = targets.map(p => {
-        const contatoRow = contactsRows.find(c => String(c.prefixo).trim() === p);
-        return contatoRow ? { prefixo:p, contatoRow, lines: [] } : null;
-      }).filter(Boolean);
-    }
-
-    if (!payloadGroups.length) return alert('Nenhum grupo para enviar (verifique contatos/seleção/planilha).');
-
-    let sent=0, failed=0;
-    for (const g of payloadGroups) {
-      try{
-        const saudacao = `<p>Olá ${escapeHtml(g.contatoRow.nome || '')}, tudo bem?</p>`;
-        const corpo = freeText ? `<p>${escapeHtml(freeText)}</p>` : '';
-        const tabela = (includeTable && g.lines?.length) ? ('<div style="height:8px"></div>' + linesArrayToTableHTML(g.lines)) : '';
-        const bodyHtml = saudacao + corpo + tabela;
-
-        if (dm) {
-          const user = await findUserByEmail(g.contatoRow.email);
-          const chatId = await getOrCreateOneOnOneChat(user.id);
-          await sendChatMessage(chatId, bodyHtml);
-          log(`DM enviada para ${g.contatoRow.email} (prefixo ${g.prefixo}).`,'ok');
-        } else {
-          await sendChannelMessage(teamId, channelId, bodyHtml);
-          log(`Canal: mensagem enviada (prefixo ${g.prefixo}).`,'ok');
-        }
-        sent++;
-      }catch(e){
-        failed++; log(`Falha no prefixo ${g.prefixo}: `+e,'error');
-      }
-    }
-    $('sendStatus').innerHTML = `<span class="${failed?'warn':'ok'}">Concluído: ${sent} enviados, ${failed} falharam</span>`;
-  }catch(e){
-    log('Erro no envio: '+e,'error');
-    $('sendStatus').innerHTML = '<span class="error">Erro</span>';
-  }
-});
-
-/* ========== Graph helpers ========== */
-async function sendChannelMessage(teamId, channelId, html){
-  return graph(`/teams/${teamId}/channels/${channelId}/messages`, { method:'POST', body: JSON.stringify({ body:{ contentType:'html', content: html } }) });
-}
-async function sendChatMessage(chatId, html){
-  return graph(`/chats/${chatId}/messages`, { method:'POST', body: JSON.stringify({ body:{ contentType:'html', content: html } }) });
-}
-async function findUserByEmail(email){
-  const q = email.replace(/'/g,"''");
-  const data = await graph(`/users?$filter=mail eq '${q}' or userPrincipalName eq '${q}'&$select=id,displayName,mail,userPrincipalName`);
-  if(!data.value?.length) throw new Error('Usuário não encontrado: '+email);
-  return data.value[0];
-}
-async function getOrCreateOneOnOneChat(userId){
-  const me = await graph('/me?$select=id');
-  const body = {
-    chatType: "oneOnOne",
-    members: [
-      { "@odata.type": "#microsoft.graph.aadUserConversationMember", "roles": ["owner"], "user@odata.bind": `https://graph.microsoft.com/v1.0/users('${me.id}')` },
-      { "@odata.type": "#microsoft.graph.aadUserConversationMember", "roles": ["owner"], "user@odata.bind": `https://graph.microsoft.com/v1.0/users('${userId}')` }
-    ]
-  };
-  const created = await graph('/chats', { method:'POST', body: JSON.stringify(body) });
-  return created.id;
-}
+  // Initialize computed Share on load
+  updateShare();
 </script>
 </body>
 </html>
