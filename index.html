@@ -3,9 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Disparador — Copiar & Colar (colar como planilha | 20+ colunas)</title>
+<title>Disparador — Print da planilha (por contato)</title>
 
-<!-- Export local (opcional) -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
@@ -18,7 +17,7 @@
   .pill{display:inline-flex;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;background:#ecfeff;color:#0c4a6e}
   .container{max-width:1200px;margin:24px auto;padding:0 16px}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .card{background:var(--card);border-radius:var(--radius);box-shadow:0 6px 24px rgba(3,7,18,.08);padding:16px}
+  .card{background:var(--card);border-radius:16px;box-shadow:0 6px 24px rgba(3,7,18,.08);padding:16px}
   .card h2{margin:0 0 12px;font-size:16px}
   .helper{font-size:12px;color:var(--muted);margin-top:6px}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap}
@@ -36,7 +35,6 @@
   .muted{color:var(--muted)}
   .badge{font-size:12px;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#3730a3}
   .right{margin-left:auto}
-  pre{white-space:pre-wrap;margin:0}
   .ok{background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;border-radius:12px;padding:6px 10px;font-size:12px}
   .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;padding:10px;font-size:12px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -44,15 +42,19 @@
   .sheet-paste{width:100%;min-height:160px;border:1.5px dashed #94a3b8;border-radius:12px;background:#fff;padding:10px;overflow:auto}
   .sheet-paste:focus{outline:2px solid #93c5fd; outline-offset:2px}
   .ghost-table{max-height:220px;overflow:auto;border:1px solid #e5e7eb;border-radius:10px;margin-top:8px}
+  .richmsg p{margin:.5em 0}
+  .separator{margin:10px 0;height:1px;background:#e5e7eb}
+  .imgwrap{display:flex;flex-direction:column;gap:8px}
+  .imgwrap img{max-width:100%;border:1px solid #e5e7eb;border-radius:8px}
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>Disparador — Copiar & Colar</h1>
-    <small>Colar como planilha (20+ colunas) • Contatos salvos • Anexo em tabela</small>
+    <h1>Disparador — Print da planilha</h1>
+    <small>Colar como planilha • Contatos salvos • Gera imagem (título + cabeçalho + linhas correspondentes)</small>
   </div>
-  <div class="pill">100% local (nada sai do seu PC)</div>
+  <div class="pill">100% local</div>
 </header>
 
 <div class="container">
@@ -82,7 +84,7 @@ prefixo nome email
               <th>Prefixo</th>
               <th>Nome</th>
               <th>Email</th>
-              <th>Linhas do anexo</th>
+              <th>Linhas</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -90,15 +92,19 @@ prefixo nome email
       </div>
     </section>
 
-    <!-- 2) Mensagem -->
+    <!-- 2) Mensagem + PRÉVIA COM IMAGEM -->
     <section class="card">
       <h2>2) Mensagem</h2>
       <div class="helper">Abertura fixa: <b>“Olá &lt;Primeiro Nome&gt;, tudo bem?”</b>. Escreva somente o restante.</div>
       <textarea id="messageBody" placeholder="Escreva aqui o texto após a saudação automática."></textarea>
-      <div class="helper">As linhas correspondentes do item 3 entram como <b>tabela</b> na mensagem (mesmas colunas da planilha colada).</div>
+      <div class="helper">A imagem (print) inclui o <b>título</b>, o <b>cabeçalho</b> e as <b>linhas do contato</b>.</div>
       <div style="margin-top:8px">
         <label class="muted">Prévia:</label>
-        <div class="msg" id="previewBox">Olá Fulano, tudo bem?<br><br><span class="muted">[sua mensagem]</span><br><br><span class="muted">[Tabela da planilha — aparece quando houver dados colados]</span></div>
+        <div class="msg" id="previewBox">
+          <div class="richmsg"><p>Olá Fulano, tudo bem?</p><p class="muted">[sua mensagem]</p></div>
+          <div class="separator"></div>
+          <div class="imgwrap"><div class="muted">[Imagem do print aparecerá aqui]</div></div>
+        </div>
       </div>
       <div class="toolbar" style="margin-top:8px">
         <button class="btn" id="generateMsgs">Gerar mensagens</button>
@@ -108,8 +114,9 @@ prefixo nome email
 
     <!-- 3) Dados (colar como planilha) -->
     <section class="card">
-      <h2>3) Dados da planilha — cole aqui (Ctrl+V)</h2>
-      <div class="helper">Cole direto do Excel/Sheets. O campo abaixo aceita a <b>tabela</b> da área de transferência. A <b>primeira linha</b> vira cabeçalho (ou informe abaixo).</div>
+      <h2>3) Planilha — cole aqui (Ctrl+V)</h2>
+      <div class="helper">Cole direto do Excel/Sheets (20+ colunas). Informe um <b>Título da planilha</b> para ir no print.</div>
+      <input id="sheetTitle" type="text" placeholder="Título da planilha (ex.: Relatório de Itens por Prefixo)" />
       <div id="sheetPaste" class="sheet-paste" contenteditable="true" spellcheck="false" placeholder="Cole aqui…"></div>
       <div class="row" style="margin-top:8px">
         <label>Linha do cabeçalho:</label>
@@ -120,19 +127,19 @@ prefixo nome email
       </div>
       <div id="errorBox" class="helper"></div>
 
-      <div class="helper" style="margin-top:6px">Pré-visualização (20+ colunas com rolagem):</div>
+      <div class="helper" style="margin-top:6px">Pré-visualização (rolagem horizontal):</div>
       <div id="sheetPreview" class="ghost-table" style="display:none"></div>
 
       <div class="toolbar" style="margin-top:8px">
-        <button class="btn" id="downloadZip" disabled>Baixar anexos (CSV/por contato)</button>
+        <button class="btn" id="downloadZip" disabled>Baixar prints (ZIP)</button>
       </div>
       <div class="helper">Associação de linhas ao contato por: <b>prefixo</b> OU <b>dependência/nome da dependência</b> OU <b>nome</b> igual ao nome do contato.</div>
     </section>
 
-    <!-- 4) Saída -->
+    <!-- 4) Saída (mensagens com IMAGEM) -->
     <section class="card" style="grid-column: span 2">
       <h2>4) Mensagens geradas (copiar & colar)</h2>
-      <div class="helper">Clique em <b>Copiar</b>. O texto já vem com “Olá &lt;Primeiro Nome&gt;” e a <b>tabela</b> com as linhas correspondentes.</div>
+      <div class="helper">Cada mensagem tem a imagem (print) embutida. “Copiar mensagem” tenta copiar HTML com a imagem; “Copiar imagem” coloca o PNG na área de transferência.</div>
       <div id="output" class="list"></div>
     </section>
   </div>
@@ -145,69 +152,35 @@ let filteredContactsIdx = [];
 let headers = []; // cabeçalhos da planilha colada
 let rowsAll = []; // linhas da planilha colada (array de objetos)
 let groupedRowsByContact = new Map(); // Map(contactIndex -> rows[])
+let imageCacheByContact = new Map(); // Map(contactIndex -> {pngBlob, dataUrl})
 
 const el = s => document.querySelector(s);
 const normalizeKey = s => String(s||'').trim().toLowerCase();
 const debounce = (fn,ms=250)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms)} };
 
 /* ---------------- Utils ---------------- */
-function titleCaseName(name){
-  if(!name) return "Fulano";
-  return String(name).toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase());
-}
+function titleCaseName(name){ if(!name) return "Fulano"; return String(name).toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase()); }
 function firstName(name){
   if(!name) return "Fulano";
-  const cleaned = String(name).trim()
-    .replace(/^(sr\.?|sra\.?|sr\(a\)\.?|dr\.?|dra\.?|prof\.?|profa\.?|mr\.?|mrs\.?|ms\.?)\s+/i, "");
+  const cleaned = String(name).trim().replace(/^(sr\.?|sra\.?|sr\(a\)\.?|dr\.?|dra\.?|prof\.?|profa\.?|mr\.?|mrs\.?|ms\.?)\s+/i, "");
   const first = cleaned.split(/\s+/)[0] || "Fulano";
   return first.toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase());
 }
-function toCSV(rows, headers){
-  if(!rows || !rows.length) return "";
-  const cols = headers?.length ? headers : Object.keys(rows[0]);
-  const esc = v => {
-    const s = v==null ? "" : String(v);
-    return /[",\n;]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
-  };
-  const out = [];
-  out.push(cols.join(";"));
-  for(const r of rows){ out.push(cols.map(c=>esc(r[c] ?? '')).join(";")); }
-  return out.join("\n");
-}
-function downloadBlob(name, blob){
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click();
-  setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove()},400);
-}
-function showError(msg, detail){
-  el('#errorBox').innerHTML = `<div class="err"><strong>Erro:</strong> ${msg}${detail?`<br><small>${detail}</small>`:''}</div>`;
-}
+function toCSV(rows, headers){ if(!rows?.length) return ""; const cols = headers?.length ? headers : Object.keys(rows[0]); const esc=v=>{const s=v==null?"":String(v); return /[",\n;]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}; const out=[cols.join(";")]; for(const r of rows){ out.push(cols.map(c=>esc(r[c]??'')).join(";")); } return out.join("\n"); }
+function downloadBlob(name, blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove()},400); }
+function showError(msg, detail){ el('#errorBox').innerHTML = `<div class="err"><strong>Erro:</strong> ${msg}${detail?`<br><small>${detail}</small>`:''}</div>`; }
 function showOk(msg){ el('#errorBox').innerHTML = `<div class="ok">${msg}</div>`; }
-function stripAccents(s){
-  return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-}
-function equalsLoose(a,b){
-  return stripAccents(a).trim().toLowerCase() === stripAccents(b).trim().toLowerCase();
-}
+function stripAccents(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function equalsLoose(a,b){ return stripAccents(a).trim().toLowerCase() === stripAccents(b).trim().toLowerCase(); }
+function detectDelimiter(text){ const sample = text.split(/\r?\n/).slice(0,5).join('\n'); const c = ch => (sample.match(new RegExp('\\' + ch, 'g'))||[]).length; const score=[{d:'\t',n:c('\t')},{d:';',n:c(';')},{d:',',n:c(',')}].sort((a,b)=>b.n-a.n); return score[0].n>0?score[0].d:'\t'; }
 
-/* ---------------- Pegar dados colados como PLANILHA ----------------
-   - Excel/Sheets copiam text/html com <table>. Usamos isso.
-   - Se não vier HTML, caímos para text/plain (TSV/CSV).
-------------------------------------------------------------------- */
+/* ---------------- Pegar dados colados como PLANILHA ---------------- */
 const sheetPaste = el('#sheetPaste');
-sheetPaste.addEventListener('paste', (evt)=>{
-  // Deixe o usuário colar normalmente, mas capture o conteúdo pra pré-visualização
-  setTimeout(refreshPreviewFromEditable, 0);
-});
+sheetPaste.addEventListener('paste', ()=>{ setTimeout(refreshPreviewFromEditable, 0); });
 
 function refreshPreviewFromEditable(){
   const { headers: h, rowsAoA } = extractFromEditable(sheetPaste);
-  if(h.length === 0 || rowsAoA.length === 0){
-    el('#sheetPreview').style.display='none';
-    el('#sheetPreview').innerHTML='';
-    return;
-  }
-  // Render prévia (20+ colunas com rolagem horizontal)
+  if(h.length === 0 || rowsAoA.length === 0){ el('#sheetPreview').style.display='none'; el('#sheetPreview').innerHTML=''; return; }
   const tbl = document.createElement('table');
   const thead = document.createElement('thead');
   const trh = document.createElement('tr');
@@ -220,14 +193,10 @@ function refreshPreviewFromEditable(){
     tbody.appendChild(tr);
   });
   tbl.appendChild(thead); tbl.appendChild(tbody);
-  const cont = el('#sheetPreview');
-  cont.innerHTML=''; cont.appendChild(tbl);
-  cont.style.display='block';
+  const cont = el('#sheetPreview'); cont.innerHTML=''; cont.appendChild(tbl); cont.style.display='block';
 }
 
-// Extrai tabela do contenteditable (prioriza HTML <table>)
 function extractFromEditable(container){
-  // 1) tentar achar uma <table> dentro do HTML colado
   const table = container.querySelector('table');
   if(table){
     const rows = Array.from(table.rows);
@@ -236,7 +205,6 @@ function extractFromEditable(container){
     const rowsAoA = aoa.slice(1);
     return { headers, rowsAoA };
   }
-  // 2) se não houver <table>, ler o texto (TSV/CSV colado)
   const txt = container.innerText || '';
   const lines = txt.split(/\r?\n/).filter(l=>l.trim().length);
   if(!lines.length) return {headers:[], rowsAoA:[]};
@@ -247,151 +215,81 @@ function extractFromEditable(container){
   return { headers, rowsAoA };
 }
 
-function detectDelimiter(text){
-  const sample = text.split(/\r?\n/).slice(0,5).join('\n');
-  const c = ch => (sample.match(new RegExp('\\' + ch, 'g'))||[]).length;
-  const score = [{d:'\t',n:c('\t')},{d:';',n:c(';')},{d:',',n:c(',')}].sort((a,b)=>b.n-a.n);
-  return score[0].n>0 ? score[0].d : '\t';
-}
-
-/* Botão "Usar dados colados": vira rowsAll/headers e associa aos contatos */
+/* Aplicar dados colados */
 el('#usePasted').addEventListener('click', ()=>{
   try{
     const { headers: h0, rowsAoA } = extractFromEditable(sheetPaste);
     if(!rowsAoA.length || !h0.length){ showError('Nada para processar. Cole a planilha e tente de novo.'); return; }
-
-    // Cabeçalho a partir da 1ª linha, ou linha informada
     const hdrRowInput = el('#headerRow').value.trim();
     let hdrIdx = 0;
-    if(hdrRowInput){
-      const n = parseInt(hdrRowInput,10);
-      if(Number.isInteger(n) && n>=1 && n<=rowsAoA.length+1){ hdrIdx = n-1; }
-    }
-
-    // Quando cabeçalho não é a primeira linha da preview:
-    // reconstruímos aoa inserindo a linha de cabeçalho correta
+    if(hdrRowInput){ const n = parseInt(hdrRowInput,10); if(Number.isInteger(n) && n>=1 && n<=rowsAoA.length+1){ hdrIdx = n-1; } }
     const aoaFull = [h0, ...rowsAoA];
     const headersRow = aoaFull[hdrIdx] || aoaFull[0];
     headers = headersRow.map(x=>String(x||'').trim());
-
     const dataAoA = aoaFull.slice(hdrIdx+1).filter(r=>r.some(v=>String(v).trim()!==''));
-    rowsAll = dataAoA.map(r=>{
-      const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o;
-    });
+    rowsAll = dataAoA.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o; });
 
+    imageCacheByContact.clear();
     recountAndAutoselect();
     el('#attachStats').textContent = `Planilha colada: ${rowsAll.length} linha(s) • ${headers.length} coluna(s)`;
     el('#clearAttach').disabled = false;
     el('#downloadZip').disabled = rowsAll.length===0;
     showOk('Dados aplicados com sucesso.');
-  }catch(err){
-    console.error(err);
-    showError('Falha ao processar a planilha colada.', err?.message || String(err));
-  }
+  }catch(err){ console.error(err); showError('Falha ao processar a planilha colada.', err?.message || String(err)); }
 });
 
 el('#clearAttach').addEventListener('click', ()=>{
-  headers=[]; rowsAll=[]; groupedRowsByContact.clear();
+  headers=[]; rowsAll=[]; groupedRowsByContact.clear(); imageCacheByContact.clear();
   contacts.forEach(c=> c.attachCount=0);
-  el('#attachStats').textContent='Sem dados';
-  el('#errorBox').innerHTML='';
-  el('#clearAttach').disabled = true;
-  el('#downloadZip').disabled = true;
-  el('#sheetPreview').style.display='none';
-  el('#sheetPreview').innerHTML='';
-  sheetPaste.innerHTML='';
-  renderContacts();
+  el('#attachStats').textContent='Sem dados'; el('#errorBox').innerHTML='';
+  el('#clearAttach').disabled = true; el('#downloadZip').disabled = true;
+  el('#sheetPreview').style.display='none'; el('#sheetPreview').innerHTML='';
+  sheetPaste.innerHTML=''; renderContacts(); updatePreview();
 });
 
 /* ---------------- Associação das linhas aos contatos ---------------- */
 function recountAndAutoselect(){
   groupedRowsByContact.clear();
-
-  const depCols = headers.filter(h=>{
-    const k = normalizeKey(h);
-    return k==='dependencia' || k==='dependência' || k==='nome dependencia' || k==='nome da dependencia' || k==='nome da dependência' || k.includes('depend');
-  });
+  const depCols = headers.filter(h=>{ const k=normalizeKey(h); return k==='dependencia'||k==='dependência'||k==='nome dependencia'||k==='nome da dependencia'||k==='nome da dependência'||k.includes('depend'); });
   const nameCols = headers.filter(h=> normalizeKey(h)==='nome' || normalizeKey(h).includes('nome') );
-  const prefixCols = headers.filter(h=> normalizeKey(h).includes('prefix')); // aceita "prefixo", "prefix", etc.
+  const prefixCols = headers.filter(h=> normalizeKey(h).includes('prefix'));
 
   contacts.forEach((c, idx)=>{
     const rowsMatch = [];
     const px = String(c.prefixo||'').trim();
     const nomeContato = String(c.nome||'').trim();
-
     for(const r of rowsAll){
       let matched = false;
-
-      // 1) prefixo igual
-      if(prefixCols.length){
-        for(const h of prefixCols){
-          if(equalsLoose(r[h]??'', px)){ matched = true; break; }
-        }
-      }
-      // 2) dependencia/nome da dependência == nome do contato
-      if(!matched && depCols.length){
-        for(const h of depCols){
-          if(equalsLoose(r[h], nomeContato)){ matched = true; break; }
-        }
-      }
-      // 3) 'nome' da planilha igual ao nome do contato
-      if(!matched && nameCols.length){
-        for(const h of nameCols){
-          if(equalsLoose(r[h], nomeContato)){ matched = true; break; }
-        }
-      }
+      if(prefixCols.length){ for(const h of prefixCols){ if(equalsLoose(r[h]??'', px)){ matched = true; break; } } }
+      if(!matched && depCols.length){ for(const h of depCols){ if(equalsLoose(r[h], nomeContato)){ matched = true; break; } } }
+      if(!matched && nameCols.length){ for(const h of nameCols){ if(equalsLoose(r[h], nomeContato)){ matched = true; break; } } }
       if(matched) rowsMatch.push(r);
     }
-
     groupedRowsByContact.set(idx, rowsMatch);
     c.attachCount = rowsMatch.length;
     if(rowsMatch.length>0) c.selected = true;
   });
-
-  renderContacts();
-  updatePreview();
+  renderContacts(); updatePreview();
 }
 
 /* ---------------- Contatos (com salvar no navegador) ---------------- */
-function detectDelimiter(text){
-  const sample = text.split(/\r?\n/).slice(0,5).join('\n');
-  const c = ch => (sample.match(new RegExp('\\' + ch, 'g'))||[]).length;
-  const score = [{d:'\t',n:c('\t')},{d:';',n:c(';')},{d:',',n:c(',')}].sort((a,b)=>b.n-a.n);
-  return score[0].n>0 ? score[0].d : '\t';
-}
 function parseContacts(raw){
-  raw = (raw||"").trim();
-  if(!raw) return [];
+  raw = (raw||"").trim(); if(!raw) return [];
   const sep = detectDelimiter(raw);
   const lines = raw.split(/\r?\n/).filter(l=>l.trim().length);
-  const headers = (lines.shift()||"").split(sep).map(h=>normalizeKey(h));
-  const iPrefixo = headers.findIndex(h=>/prefix/.test(h));
-  const iNome = headers.findIndex(h=>/^nome$/.test(h));
-  const iEmail = headers.findIndex(h=>/^email$/.test(h) || /^e-mail$/.test(h));
-  if(iPrefixo<0 || iNome<0 || iEmail<0){
-    alert('Cabeçalhos necessários (variações aceitas): prefixo/prefix/pref, nome, email.');
-    return [];
-  }
-  const data=[];
-  for(const line of lines){
-    const p=line.split(sep);
-    data.push({
-      prefixo:String(p[iPrefixo]||'').trim(),
-      nome:String(p[iNome]||'').trim(),
-      email:String(p[iEmail]||'').trim(),
-      selected:false,
-      attachCount:0
-    });
-  }
+  const headersC = (lines.shift()||"").split(sep).map(h=>normalizeKey(h));
+  const iPrefixo = headersC.findIndex(h=>/prefix/.test(h));
+  const iNome = headersC.findIndex(h=>/^nome$/.test(h));
+  const iEmail = headersC.findIndex(h=>/^email$/.test(h) || /^e-mail$/.test(h));
+  if(iPrefixo<0 || iNome<0 || iEmail<0){ alert('Cabeçalhos necessários (variações aceitas): prefixo/prefix/pref, nome, email.'); return []; }
+  const data=[]; for(const line of lines){ const p=line.split(sep); data.push({ prefixo:String(p[iPrefixo]||'').trim(), nome:String(p[iNome]||'').trim(), email:String(p[iEmail]||'').trim(), selected:false, attachCount:0 }); }
   return data;
 }
 function renderContacts(){
-  const tbody = el('#contactsTable tbody'); tbody.innerHTML='';
-  filteredContactsIdx = [];
+  const tbody = el('#contactsTable tbody'); tbody.innerHTML=''; filteredContactsIdx = [];
   const q = normalizeKey(el('#searchBox').value);
   contacts.forEach((c,i)=>{
-    const hay = normalizeKey(`${c.prefixo} ${c.nome} ${c.email}`);
-    if(q && !hay.includes(q)) return;
+    const hay = normalizeKey(`${c.prefixo} ${c.nome} ${c.email}`); if(q && !hay.includes(q)) return;
     filteredContactsIdx.push(i);
     const tr=document.createElement('tr');
     tr.innerHTML = `
@@ -405,148 +303,238 @@ function renderContacts(){
   });
   el('#contactStats').textContent = `${contacts.length} contato${contacts.length===1?'':'s'} • ${filteredContactsIdx.length} exibido${filteredContactsIdx.length===1?'':'s'}`;
 }
-function saveContactsIfEnabled(){
-  if(el('#keepContacts').checked){
-    localStorage.setItem('savedContactsRaw', el('#contactsInput').value || '');
-    localStorage.setItem('keepContacts', '1');
-  } else {
-    localStorage.removeItem('savedContactsRaw');
-    localStorage.setItem('keepContacts', '0');
-  }
-}
+function saveContactsIfEnabled(){ if(el('#keepContacts').checked){ localStorage.setItem('savedContactsRaw', el('#contactsInput').value || ''); localStorage.setItem('keepContacts', '1'); } else { localStorage.removeItem('savedContactsRaw'); localStorage.setItem('keepContacts', '0'); } }
 function loadSavedContactsOnStart(){
-  const keep = localStorage.getItem('keepContacts') === '1';
-  el('#keepContacts').checked = keep;
+  const keep = localStorage.getItem('keepContacts') === '1'; el('#keepContacts').checked = keep;
   const saved = localStorage.getItem('savedContactsRaw') || '';
-  if(keep && saved){
-    el('#contactsInput').value = saved;
-    const data = parseContacts(saved);
-    if(data.length){
-      contacts = data;
-      renderContacts();
-    }
-  }
+  if(keep && saved){ el('#contactsInput').value = saved; const data = parseContacts(saved); if(data.length){ contacts = data; renderContacts(); } }
 }
 loadSavedContactsOnStart();
-
 el('#keepContacts').addEventListener('change', saveContactsIfEnabled);
-el('#loadContacts').addEventListener('click', ()=>{
-  const raw = el('#contactsInput').value;
-  const data = parseContacts(raw);
-  if(!data.length) return;
-  contacts = data;
-  recountAndAutoselect();
-  renderContacts();
-  saveContactsIfEnabled();
-});
-el('#clearContacts').addEventListener('click', ()=>{
-  contacts=[]; el('#contactsInput').value=''; renderContacts(); el('#output').innerHTML='';
-  saveContactsIfEnabled();
-});
-el('#contactsTable').addEventListener('change', e=>{
-  if(e.target.matches('input[type="checkbox"][data-idx]')){
-    const i=Number(e.target.getAttribute('data-idx'));
-    if(!Number.isNaN(i) && contacts[i]) contacts[i].selected = e.target.checked;
-  }
-});
-el('#selectAll').addEventListener('change', e=>{
-  const check = e.target.checked;
-  filteredContactsIdx.forEach(i=>{ if(contacts[i]) contacts[i].selected = check; });
-  renderContacts();
-});
+el('#loadContacts').addEventListener('click', ()=>{ const raw = el('#contactsInput').value; const data = parseContacts(raw); if(!data.length) return; contacts = data; recountAndAutoselect(); renderContacts(); saveContactsIfEnabled(); });
+el('#clearContacts').addEventListener('click', ()=>{ contacts=[]; el('#contactsInput').value=''; renderContacts(); el('#output').innerHTML=''; saveContactsIfEnabled(); });
+el('#contactsTable').addEventListener('change', e=>{ if(e.target.matches('input[type="checkbox"][data-idx]')){ const i=Number(e.target.getAttribute('data-idx')); if(!Number.isNaN(i) && contacts[i]) contacts[i].selected = e.target.checked; updatePreview(); } });
+el('#selectAll').addEventListener('change', e=>{ const check = e.target.checked; filteredContactsIdx.forEach(i=>{ if(contacts[i]) contacts[i].selected = check; }); renderContacts(); updatePreview(); });
 el('#searchBox').addEventListener('input', debounce(()=>{ renderContacts(); updatePreview(); },150));
 
-/* ---------------- Mensagem (anexo como TABELA Markdown) ---------------- */
-function buildMarkdownTable(headers, rows){
-  if(!headers?.length || !rows?.length) return '';
-  const th = '| ' + headers.join(' | ') + ' |';
-  const sep = '| ' + headers.map(()=> '---').join(' | ') + ' |';
-  const lines = rows.map(r => '| ' + headers.map(h => String(r[h] ?? '')).join(' | ') + ' |');
-  return [th, sep, ...lines].join('\n');
-}
-function buildAttachmentBlockTable(contactIndex){
-  const rows = groupedRowsByContact.get(contactIndex) || [];
-  if(!rows.length) return "";
-  const table = buildMarkdownTable(headers, rows);
-  return [
-    `---`,
-    `Tabela referente ao contato:`,
-    table
-  ].join("\n");
-}
-function buildMessageFor(contact, contactIndex, body){
-  const nome = firstName(contact?.nome);
-  const greeting = `Olá ${nome}, tudo bem?`;
-  const partBody = (body && body.trim()) ? `\n\n${body.trim()}` : '';
-  const partAttach = buildAttachmentBlockTable(contactIndex);
-  const attachBlock = partAttach ? `\n\n${partAttach}` : '';
-  return `${greeting}${partBody}${attachBlock}`;
-}
-function updatePreview(){
-  let sampleIdx = contacts.findIndex(c=>c.selected);
-  if(sampleIdx<0) sampleIdx = contacts.length ? 0 : -1;
-  const body = el('#messageBody').value || '';
-  let preview = 'Olá Fulano, tudo bem?\n\n[sua mensagem]';
-  if(sampleIdx>=0){
-    const c = contacts[sampleIdx];
-    preview = buildMessageFor(c, sampleIdx, body);
+/* ---------------- Geração do PRINT (Canvas → PNG) ---------------- */
+async function buildPrintForContact(idx){
+  const titulo = el('#sheetTitle').value.trim() || 'Planilha';
+  const rows = groupedRowsByContact.get(idx) || [];
+  if(!headers.length || !rows.length) return null;
+
+  // Medidas & tipografia
+  const padX = 14, padY = 10, gapTitle = 10, rowH = 28, headerH = 30, border = 1;
+  const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+  const font = '12px Segoe UI, Roboto, Arial, sans-serif';
+  const fontBold = '600 12px Segoe UI, Roboto, Arial, sans-serif';
+  const titleFont = '600 16px Segoe UI, Roboto, Arial, sans-serif';
+
+  // Calcular largura de colunas
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  ctx.font = font;
+  const colW = headers.map(h=>{
+    let w = ctx.measureText(h).width + 20;
+    rows.forEach(r=>{ w = Math.max(w, ctx.measureText(String(r[h]??'')).width + 20); });
+    return Math.min(Math.max(80, Math.ceil(w)), 360); // min 80, máx 360 por coluna
+  });
+  const tableW = colW.reduce((a,b)=>a+b,0) + border*(headers.length+1);
+  const tableH = headerH + rows.length*rowH + border*(rows.length+1);
+  const titleH = 24;
+
+  const totalW = Math.ceil(padX*2 + tableW);
+  const totalH = Math.ceil(padY*2 + titleH + gapTitle + tableH);
+
+  canvas.width = totalW * dpr; canvas.height = totalH * dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,totalW,totalH);
+
+  // Título
+  ctx.font = titleFont; ctx.fillStyle = '#0f172a';
+  ctx.fillText(titulo, padX, padY + 18);
+
+  // Tabela (fundo)
+  let x = padX, y = padY + titleH + gapTitle;
+  ctx.font = font;
+
+  // Cabeçalho
+  ctx.fillStyle = '#f8fafc'; ctx.fillRect(x, y, tableW, headerH);
+  // Linhas + colunas
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = border;
+
+  // Bordas horizontais (inclui header)
+  for(let i=0;i<=rows.length+1;i++){
+    const yy = y + i*rowH + (i===0?0:headerH-rowH);
+    ctx.beginPath();
+    ctx.moveTo(x, yy);
+    ctx.lineTo(x+tableW, yy);
+    ctx.stroke();
   }
-  el('#previewBox').innerHTML = preview.replace(/\n/g,'<br>');
+  // Bordas verticais
+  let cx = x;
+  for(let c=0;c<=headers.length;c++){
+    ctx.beginPath();
+    ctx.moveTo(cx, y);
+    ctx.lineTo(cx, y + headerH + rows.length*rowH);
+    ctx.stroke();
+    cx += colW[c]||0;
+  }
+
+  // Header text
+  ctx.fillStyle = '#111827'; ctx.font = fontBold;
+  let tx = x + border;
+  headers.forEach((h,i)=>{
+    ctx.fillText(String(h), tx + 8, y + 20);
+    tx += colW[i];
+  });
+
+  // Rows text
+  ctx.font = font; ctx.fillStyle = '#111827';
+  let ry = y + headerH + 20;
+  rows.forEach(r=>{
+    let rx = x + border + 8;
+    headers.forEach((h,i)=>{ const val = String(r[h]??''); ctx.fillText(val, rx, ry); rx += colW[i]; });
+    ry += rowH;
+  });
+
+  return new Promise(resolve=>{
+    canvas.toBlob(blob=>{
+      if(!blob) return resolve(null);
+      const url = URL.createObjectURL(blob);
+      resolve({blob, url, revoke: ()=>URL.revokeObjectURL(url)});
+    }, 'image/png', 1);
+  });
 }
-el('#messageBody').addEventListener('input', debounce(updatePreview,100));
+
+/* ---------------- Mensagem (HTML com imagem) ---------------- */
+function buildMessageHTML(contact, pngUrl, body){
+  const nome = firstName(contact?.nome);
+  const bodyHTML = body && body.trim() ? `<p>${escapeHTML(body.trim()).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>')}</p>` : '';
+  const imgHTML = pngUrl ? `<div class="separator"></div><div class="imgwrap"><img src="${pngUrl}" alt="print da planilha"></div>` : '';
+  return `<div class="richmsg"><p>Olá ${nome}, tudo bem?</p>${bodyHTML}${imgHTML}</div>`;
+}
+function buildMessagePlainText(contact, body){
+  const nome = firstName(contact?.nome);
+  const partBody = body && body.trim() ? `\n\n${body.trim()}` : '';
+  return `Olá ${nome}, tudo bem?${partBody}\n\n[Print da planilha anexado]`;
+}
+function escapeHTML(s){ return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+/* ---------------- Prévia ---------------- */
+async function updatePreview(){
+  const box = el('#previewBox'); const body = el('#messageBody').value || '';
+  let idx = contacts.findIndex(c=>c.selected); if(idx<0) idx = contacts.length?0:-1;
+  if(idx<0){ box.querySelector('.richmsg').innerHTML = `<p>Olá Fulano, tudo bem?</p><p class="muted">[sua mensagem]</p>`; box.querySelector('.imgwrap').innerHTML = `<div class="muted">[Imagem do print aparecerá aqui]</div>`; return; }
+
+  let img = imageCacheByContact.get(idx);
+  if(!img){
+    img = await buildPrintForContact(idx);
+    imageCacheByContact.set(idx, img);
+  }
+  const html = buildMessageHTML(contacts[idx], img?.url || '', body);
+  box.innerHTML = html + '';
+}
+el('#messageBody').addEventListener('input', debounce(updatePreview,120));
 
 /* ---------------- Saída / Export ---------------- */
-el('#generateMsgs').addEventListener('click', ()=>{
+el('#generateMsgs').addEventListener('click', async ()=>{
   const body = el('#messageBody').value || '';
   const target = el('#output'); target.innerHTML='';
-  const selected = contacts.filter(c=>c.selected);
-  if(!selected.length){ target.innerHTML = `<div class="muted">Nenhum contato selecionado.</div>`; return; }
+  const selectedIdx = contacts.map((c,i)=> c.selected ? i : -1).filter(i=>i>=0);
+  if(!selectedIdx.length){ target.innerHTML = `<div class="muted">Nenhum contato selecionado.</div>`; return; }
 
-  contacts.forEach((c, idx)=>{
-    if(!c.selected) return;
-    const msg = buildMessageFor(c, idx, body);
+  // Gera/obtém prints para todos os selecionados
+  for(const idx of selectedIdx){
+    if(!imageCacheByContact.get(idx)){
+      const img = await buildPrintForContact(idx);
+      imageCacheByContact.set(idx, img);
+    }
+  }
+
+  selectedIdx.forEach(idx=>{
+    const c = contacts[idx];
+    const img = imageCacheByContact.get(idx) || null;
+    const htmlMsg = buildMessageHTML(c, img?.url || '', body);
+    const textMsg = buildMessagePlainText(c, body);
+
     const wrap = document.createElement('div');
     wrap.className='msg';
-    const hasAttach = (c.attachCount||0)>0;
-
     wrap.innerHTML = `
       <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">
         <strong>${titleCaseName(c.nome)}</strong>
         <span class="badge">${c.email||'sem email'}</span>
         <span class="right badge">Prefixo: ${c.prefixo||'-'}</span>
       </div>
-      <pre>${msg}</pre>
+      <div class="richmsg" data-htmlmsg></div>
       <div class="toolbar" style="margin-top:8px">
         <button class="btn" data-copy>Copiar mensagem</button>
-        ${hasAttach ? `<button class="btn ghost" data-dl>Baixar CSV (${c.attachCount})</button>` : `<span class="muted">Sem linhas para este contato</span>`}
+        <button class="btn ghost" data-copyimg ${img?'':'disabled'}>Copiar imagem</button>
+        <button class="btn ghost" data-dlimg ${img?'':'disabled'}>Baixar PNG</button>
+        <button class="btn ghost" data-dl>Baixar CSV (${c.attachCount||0})</button>
       </div>
     `;
-    target.appendChild(wrap);
+    wrap.querySelector('[data-htmlmsg]').innerHTML = htmlMsg;
+    el('#output').appendChild(wrap);
 
-    // copiar mensagem
+    // Copiar mensagem (HTML + fallback texto)
     wrap.querySelector('[data-copy]').addEventListener('click', async ()=>{
       try{
-        await navigator.clipboard.writeText(msg);
-        const b = wrap.querySelector('[data-copy]'); b.textContent='Copiado!'; setTimeout(()=>b.textContent='Copiar mensagem',1200);
-      }catch{
-        const ta=document.createElement('textarea'); ta.value=msg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-        const b = wrap.querySelector('[data-copy]'); b.textContent='Copiado!'; setTimeout(()=>b.textContent='Copiar mensagem',1200);
-      }
+        if (navigator.clipboard && window.ClipboardItem) {
+          const blobHTML = new Blob([htmlMsg], {type:'text/html'});
+          const blobTXT = new Blob([textMsg], {type:'text/plain'});
+          await navigator.clipboard.write([ new ClipboardItem({ 'text/html': blobHTML, 'text/plain': blobTXT }) ]);
+        } else {
+          await navigator.clipboard.writeText(textMsg);
+        }
+        const b=wrap.querySelector('[data-copy]'); b.textContent='Copiado!'; setTimeout(()=>b.textContent='Copiar mensagem',1200);
+      }catch{ const ta=document.createElement('textarea'); ta.value=textMsg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); const b=wrap.querySelector('[data-copy]'); b.textContent='Copiado (texto)'; setTimeout(()=>b.textContent='Copiar mensagem',1200); }
     });
 
-    // download csv por contato
-    if(hasAttach){
-      wrap.querySelector('[data-dl]').addEventListener('click', ()=>{
-        const rows = groupedRowsByContact.get(idx) || [];
-        const csv = toCSV(rows, headers);
-        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-        downloadBlob(`${String(c.prefixo||'sem-prefixo')} - ${titleCaseName(c.nome)}.csv`, blob);
+    // Copiar imagem (se suportado)
+    if(img){
+      wrap.querySelector('[data-copyimg]').addEventListener('click', async ()=>{
+        try{
+          if(navigator.clipboard && window.ClipboardItem){ await navigator.clipboard.write([ new ClipboardItem({ 'image/png': img.blob }) ]); const b=wrap.querySelector('[data-copyimg]'); b.textContent='Imagem copiada!'; setTimeout(()=>b.textContent='Copiar imagem',1200); }
+          else{ throw new Error('ClipboardItem não disponível'); }
+        }catch{
+          downloadBlob(`${String(c.prefixo||'print')}.png`, img.blob); // fallback: baixa a imagem
+        }
       });
+      wrap.querySelector('[data-dlimg]').addEventListener('click', ()=> downloadBlob(`${String(c.prefixo||'print')} - ${titleCaseName(c.nome)}.png`, img.blob));
     }
+
+    // CSV por contato (se houver linhas)
+    wrap.querySelector('[data-dl]').addEventListener('click', ()=>{
+      const rows = groupedRowsByContact.get(idx) || [];
+      if(!rows.length){ alert('Sem linhas para este contato.'); return; }
+      const csv = toCSV(rows, headers);
+      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+      downloadBlob(`${String(c.prefixo||'sem-prefixo')} - ${titleCaseName(c.nome)}.csv`, blob);
+    });
   });
 });
 
-// Export CSV de selecionados (planejamento)
+/* ZIP com todos os PRINTS */
+el('#downloadZip').addEventListener('click', async ()=>{
+  const selIdx = contacts.map((c,i)=> c.selected ? i : -1).filter(i=>i>=0);
+  if(!selIdx.length){ alert('Nenhum contato selecionado.'); return; }
+  const zip = new JSZip(); let added=0;
+  for(const idx of selIdx){
+    if(!imageCacheByContact.get(idx)){ const img = await buildPrintForContact(idx); imageCacheByContact.set(idx, img); }
+    const c = contacts[idx]; const img = imageCacheByContact.get(idx);
+    if(img?.blob){ zip.file(`${String(c.prefixo||'print')} - ${titleCaseName(c.nome)}.png`, img.blob); added++; }
+  }
+  if(!added){ alert('Nenhum print disponível.'); return; }
+  const blob = await zip.generateAsync({type:'blob'}); saveAs(blob, 'prints_por_contato.zip');
+});
+
+/* ---------------- Prévia em tempo real ---------------- */
+function renderPreviewTableImageHint(){ updatePreview(); }
+
+/* ---------------- Helpers de contatos/search ---------------- */
+function detectDelimiter(text){ const sample=text.split(/\r?\n/).slice(0,5).join('\n'); const c=ch=>(sample.match(new RegExp('\\'+ch,'g'))||[]).length; const score=[{d:'\t',n:c('\t')},{d:';',n:c(';')},{d:',',n:c(',')}].sort((a,b)=>b.n-a.n); return score[0].n>0?score[0].d:'\t'; }
 el('#exportCSV').addEventListener('click', ()=>{
   const sel = contacts.filter(c=>c.selected);
   if(!sel.length){ alert('Nenhum contato selecionado.'); return; }
@@ -555,6 +543,7 @@ el('#exportCSV').addEventListener('click', ()=>{
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   downloadBlob('lista_envios.csv', blob);
 });
+/* Input handlers já definidos acima */
 </script>
 </body>
 </html>
