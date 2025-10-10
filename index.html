@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Disparador — Copiar & Colar (robusto p/ planilhas)</title>
+<title>Disparador — Copiar & Colar (sem upload)</title>
 
-<!-- JSZip + FileSaver: pequenos e raramente bloqueados -->
+<!-- Apenas ZIP/Save para exportar arquivos gerados localmente -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 
 <style>
-  :root{--bb-azul:#0033a0;--bb-amarelo:#ffcc00;--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--warn:#d97706;--danger:#dc2626;--radius:16px}
+  :root{--bb-azul:#0033a0;--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--warn:#d97706;--radius:16px}
   *{box-sizing:border-box}
   body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(135deg,#f0f3ff,#f8fafc);color:#111827}
   header{padding:20px 24px;background:var(--bb-azul);color:#fff;display:flex;align-items:center;justify-content:space-between}
@@ -22,12 +22,11 @@
   .card h2{margin:0 0 12px;font-size:16px}
   .helper{font-size:12px;color:var(--muted);margin-top:6px}
   .toolbar{display:flex;gap:8px;flex-wrap:wrap}
-  textarea,input[type="text"],input[type="file"],select{width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;font:inherit}
+  textarea,input[type="text"],select{width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;font:inherit}
   textarea{min-height:120px;resize:vertical}
   .btn{appearance:none;border:0;background:var(--bb-azul);color:#fff;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer}
   .btn.ghost{background:#fff;color:#0f172a;border:1px solid #e5e7eb}
   .btn.dark{background:#0f172a}
-  .btn.warn{background:var(--warn)}
   .table-wrap{border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;background:#fff}
   table{width:100%;border-collapse:collapse;font-size:14px}
   th,td{padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:left}
@@ -38,8 +37,8 @@
   .badge{font-size:12px;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#3730a3}
   .right{margin-left:auto}
   pre{white-space:pre-wrap;margin:0}
-  .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;padding:10px;font-size:12px}
   .ok{background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;border-radius:12px;padding:6px 10px;font-size:12px}
+  .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;padding:10px;font-size:12px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 </style>
 </head>
@@ -47,14 +46,14 @@
 <header>
   <div>
     <h1>Disparador — Copiar & Colar</h1>
-    <small>Saudação automática (só o primeiro nome) + anexo em texto (linhas por prefixo)</small>
+    <small>Saudação automática (só o primeiro nome) + anexo em texto (linhas por prefixo) • Sem upload</small>
   </div>
   <div class="pill">100% local (nada sai do seu PC)</div>
 </header>
 
 <div class="container">
   <div class="grid">
-    <!-- Contatos -->
+    <!-- 1) Contatos -->
     <section class="card">
       <h2>1) Contatos</h2>
       <div class="helper">Cole tabela com cabeçalhos <b>prefixo</b>, <b>nome</b>, <b>email</b> (TAB/CSV).</div>
@@ -84,15 +83,15 @@ prefixo nome email
       </div>
     </section>
 
-    <!-- Mensagem -->
+    <!-- 2) Mensagem -->
     <section class="card">
       <h2>2) Mensagem</h2>
       <div class="helper">Abertura fixa: <b>“Olá &lt;Primeiro Nome&gt;, tudo bem?”</b>. Escreva somente o restante.</div>
       <textarea id="messageBody" placeholder="Escreva aqui o texto após a saudação automática."></textarea>
-      <div class="helper">Se houver planilha, as linhas do <b>prefixo</b> do contato serão incluídas automaticamente no corpo.</div>
+      <div class="helper">Se houver dados colados no item 3, as linhas do <b>prefixo</b> do contato serão incluídas automaticamente no corpo.</div>
       <div style="margin-top:8px">
         <label class="muted">Prévia:</label>
-        <div class="msg" id="previewBox">Olá Fulano, tudo bem?<br><br><span class="muted">[sua mensagem]</span><br><br><span class="muted">[Anexo do prefixo — surge quando houver planilha]</span></div>
+        <div class="msg" id="previewBox">Olá Fulano, tudo bem?<br><br><span class="muted">[sua mensagem]</span><br><br><span class="muted">[Anexo do prefixo — surge quando houver dados colados]</span></div>
       </div>
       <div class="toolbar" style="margin-top:8px">
         <button class="btn" id="generateMsgs">Gerar mensagens</button>
@@ -100,27 +99,29 @@ prefixo nome email
       </div>
     </section>
 
-    <!-- Planilha / anexos -->
+    <!-- 3) Dados para anexar (COLAR AQUI) -->
     <section class="card">
-      <h2>3) Planilha para anexar no corpo</h2>
-      <div class="helper">Aceita <b>.xlsx/.xls/.xlsb/.csv</b> com coluna <b>prefixo</b>. Se a lib XLSX não carregar (política de segurança), o app cai para <b>CSV-only</b>.</div>
-      <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsb,.csv" />
+      <h2>3) Dados para anexar (colagem de tabela)</h2>
+      <div class="helper">Cole aqui a tabela que contém a coluna <b>prefixo</b>. Aceita TAB/“;”/“,”. Podemos detectar automaticamente o cabeçalho, ou você informa a linha.</div>
+      <textarea id="attachInput" placeholder="Exemplo (pode colar direto do Excel/Sheets):
+prefixo;produto;quantidade;valor
+123;Teclado;2;199,90
+123;Mouse;1;99,90
+456;Monitor;1;1.199,00"></textarea>
       <div class="row" style="margin-top:8px">
-        <label>Aba:</label>
-        <select id="sheetPicker" disabled></select>
         <label>Linha do cabeçalho:</label>
         <input id="headerRow" type="text" placeholder="auto" style="width:120px">
-        <button class="btn ghost" id="reparse" disabled>Reprocessar</button>
-      </div>
-      <div class="toolbar" style="margin-top:8px">
-        <button class="btn" id="downloadZip" disabled>Baixar anexos (CSV/por contato)</button>
-        <button class="btn ghost" id="clearAttach" disabled>Limpar planilha</button>
-        <div class="right"><span id="attachStats" class="badge">Sem planilha</span></div>
+        <button class="btn" id="parseAttach">Carregar dados</button>
+        <button class="btn ghost" id="clearAttach" disabled>Limpar dados</button>
+        <div class="right"><span id="attachStats" class="badge">Sem dados</span></div>
       </div>
       <div id="errorBox" class="helper"></div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn" id="downloadZip" disabled>Baixar anexos (CSV/por contato)</button>
+      </div>
     </section>
 
-    <!-- Saída -->
+    <!-- 4) Saída -->
     <section class="card" style="grid-column: span 2">
       <h2>4) Mensagens geradas (copiar & colar)</h2>
       <div class="helper">Clique em <b>Copiar</b>. O texto já vem com “Olá &lt;Primeiro Nome&gt;” e o bloco “Anexo do prefixo …” (quando houver).</div>
@@ -130,36 +131,9 @@ prefixo nome email
 </div>
 
 <script>
-/* ---------------- Carregamento robusto da XLSX ---------------- */
-async function loadXLSX() {
-  const urls = [
-    "https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js",
-    "https://unpkg.com/xlsx@0.19.3/dist/xlsx.full.min.js",
-    "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.19.3/xlsx.full.min.js"
-  ];
-  for (const url of urls) {
-    try {
-      await new Promise((res, rej) => {
-        const s = document.createElement("script");
-        s.src = url; s.async = true;
-        s.onload = () => res();
-        s.onerror = () => rej(new Error("Falha ao carregar " + url));
-        document.head.appendChild(s);
-      });
-      if (window.XLSX) {
-        window.Xlsx = window.XLSX; // alias para evitar "Xlsx is not defined"
-        return true;
-      }
-    } catch (e) { /* tenta próxima CDN */ }
-  }
-  return false;
-}
-
-/* -------------- Estado & Utils -------------- */
+/* ---------------- Estado ---------------- */
 let contacts = []; // {prefixo, nome, email, selected, attachCount}
 let filteredContactsIdx = [];
-let wbCache = null; // workbook carregado
-let wsName = null; // aba atual
 let groupedByPrefix = {}; // {prefixo: [rowObj]}
 let attachHeaders = []; // cabeçalho das linhas
 
@@ -167,13 +141,11 @@ const el = s => document.querySelector(s);
 const normalizeKey = s => String(s||'').trim().toLowerCase();
 const debounce = (fn,ms=250)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms)} };
 
-/* Capitalização completa (para exibição geral) */
+/* ---------------- Utils ---------------- */
 function titleCaseName(name){
   if(!name) return "Fulano";
   return String(name).toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase());
 }
-
-/* >>> Apenas o primeiro nome (para a saudação) */
 function firstName(name){
   if(!name) return "Fulano";
   const cleaned = String(name).trim()
@@ -181,7 +153,6 @@ function firstName(name){
   const first = cleaned.split(/\s+/)[0] || "Fulano";
   return first.toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase());
 }
-
 function toCSV(rows, headers){
   if(!rows || !rows.length) return "";
   const cols = headers?.length ? headers : Object.keys(rows[0]);
@@ -203,14 +174,31 @@ function showError(msg, detail){
   el('#errorBox').innerHTML = `<div class="err"><strong>Erro:</strong> ${msg}${detail?`<br><small>${detail}</small>`:''}</div>`;
 }
 function showOk(msg){ el('#errorBox').innerHTML = `<div class="ok">${msg}</div>`; }
-
-/* ---------------- Contatos ---------------- */
 function detectDelimiter(text){
-  const sample = text.split(/\r?\n/).slice(0,3).join('\n');
+  const sample = text.split(/\r?\n/).slice(0,5).join('\n');
   const c = ch => (sample.match(new RegExp('\\' + ch, 'g'))||[]).length;
   const score = [{d:'\t',n:c('\t')},{d:';',n:c(';')},{d:',',n:c(',')}].sort((a,b)=>b.n-a.n);
   return score[0].n>0 ? score[0].d : '\t';
 }
+function detectHeaderRow(aoa, preferred){
+  if(preferred){
+    const n = parseInt(preferred,10);
+    if(Number.isInteger(n) && n>=1 && n<=aoa.length) return n-1;
+  }
+  const maxCheck = Math.min(10, aoa.length);
+  let best = 0;
+  for(let i=0;i<maxCheck;i++){
+    const row = aoa[i] || [];
+    const norm = row.map(v=>normalizeKey(String(v)));
+    const hasPrefix = norm.some(v=>/^prefixo$/.test(v) || /^pref$/.test(v) || /^prefix$/.test(v) || v.includes('prefix'));
+    const nonEmpty = norm.filter(v=>v.length>0).length;
+    if(hasPrefix && nonEmpty>=1){ best = i; break; }
+    if(nonEmpty > (aoa[best]||[]).filter(v=>String(v).trim().length>0).length) best = i;
+  }
+  return best;
+}
+
+/* ---------------- Contatos ---------------- */
 function parseContacts(raw){
   raw = (raw||"").trim();
   if(!raw) return [];
@@ -261,6 +249,7 @@ function renderContacts(){
   el('#clearAttach').disabled = !anyAttach;
   updatePreview();
 }
+
 el('#loadContacts').addEventListener('click', ()=>{
   const data = parseContacts(el('#contactsInput').value);
   if(!data.length) return;
@@ -284,6 +273,71 @@ el('#selectAll').addEventListener('change', e=>{
 });
 el('#searchBox').addEventListener('input', debounce(renderContacts,150));
 
+/* ---------------- Anexo (colar tabela) ---------------- */
+el('#parseAttach').addEventListener('click', ()=>{
+  try{
+    const raw = (el('#attachInput').value||'').trim();
+    if(!raw){ showError('Cole a tabela no campo acima.'); return; }
+    const sep = detectDelimiter(raw);
+    const lines = raw.split(/\r?\n/).filter(l=>l.trim().length);
+    const aoa = lines.map(l=>l.split(sep));
+    const headRowIdx = detectHeaderRow(aoa, el('#headerRow').value);
+    const headers = (aoa[headRowIdx]||[]).map(h=>String(h).trim());
+    const dataAoA = aoa.slice(headRowIdx+1).filter(r=>r.some(v=>String(v).trim()!==''));
+    const rows = dataAoA.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o; });
+
+    processAttachRows(rows, headers, 'dados colados');
+    showOk('Dados carregados a partir da colagem.');
+  }catch(err){
+    console.error(err);
+    showError('Falha ao processar a colagem.', err?.message || String(err));
+  }
+});
+
+el('#clearAttach').addEventListener('click', ()=>{
+  groupedByPrefix={}; attachHeaders=[];
+  contacts.forEach(c=> c.attachCount=0);
+  el('#attachStats').textContent='Sem dados';
+  el('#errorBox').innerHTML='';
+  el('#clearAttach').disabled = true;
+  el('#downloadZip').disabled = true;
+  renderContacts();
+});
+
+function processAttachRows(rows, headers, label){
+  // localizar coluna de prefixo (variações)
+  const prefHeader = headers.find(h=>{
+    const k = normalizeKey(h);
+    return k==='prefixo' || k==='pref' || k==='prefix' || k.includes('prefix');
+  });
+  if(!prefHeader) throw new Error('Não achei a coluna "prefixo" (variações aceitas: prefixo, pref, prefix).');
+
+  groupedByPrefix = {};
+  for(const r of rows){
+    const p = String(r[prefHeader]??'').trim();
+    if(!p) continue;
+    if(!groupedByPrefix[p]) groupedByPrefix[p]=[];
+    groupedByPrefix[p].push(r);
+  }
+  attachHeaders = headers;
+  updateAttachCountsAndAutoselect();
+
+  const prefixCount = Object.keys(groupedByPrefix).length;
+  el('#attachStats').textContent = `Fonte: ${label} • ${rows.length} linha(s) • ${prefixCount} prefixo(s)`;
+  el('#clearAttach').disabled = false;
+  el('#downloadZip').disabled = prefixCount===0;
+  renderContacts();
+}
+
+function updateAttachCountsAndAutoselect(){
+  const prefixes = new Set(Object.keys(groupedByPrefix));
+  contacts.forEach(c=>{
+    const count = prefixes.has(String(c.prefixo).trim()) ? groupedByPrefix[String(c.prefixo).trim()].length : 0;
+    c.attachCount = count;
+    if(count>0) c.selected = true;
+  });
+}
+
 /* ---------------- Mensagem ---------------- */
 function buildAttachmentBlock(prefixo){
   const rows = groupedByPrefix[String(prefixo).trim()] || [];
@@ -299,7 +353,7 @@ function buildAttachmentBlock(prefixo){
   ].join("\n");
 }
 function buildMessageFor(contact, body){
-  const nome = firstName(contact?.nome); // <<<<< usa só o primeiro nome
+  const nome = firstName(contact?.nome);
   const greeting = `Olá ${nome}, tudo bem?`;
   const partBody = (body && body.trim()) ? `\n\n${body.trim()}` : '';
   const attach = buildAttachmentBlock(contact?.prefixo);
@@ -315,180 +369,19 @@ function updatePreview(){
 }
 el('#messageBody').addEventListener('input', debounce(updatePreview,100));
 
-/* ---------------- Planilha: CSV e Excel ---------------- */
-el('#fileInput').addEventListener('change', async (e)=>{
-  const file = e.target.files?.[0]; if(!file) return;
-  el('#sheetPicker').innerHTML=''; el('#sheetPicker').disabled = true;
-  el('#reparse').disabled = true;
-  try{
-    const buf = await file.arrayBuffer();
-    const lower = file.name.toLowerCase();
-
-    if(lower.endsWith('.csv')){
-      const {rows, headers} = parseCSVBuffer(buf);
-      processRows(rows, headers, file.name);
-      showOk(`CSV carregado: ${file.name}`);
-      return;
-    }
-
-    const ok = await loadXLSX();
-    if(!ok){
-      showError('Não foi possível carregar a biblioteca XLSX (bloqueio de CDN).', 'Dica: salve sua planilha como CSV e tente novamente — modo CSV está habilitado.');
-      return;
-    }
-
-    wbCache = XLSX.read(buf, {type:'array'});
-    const names = wbCache.SheetNames || [];
-    if(!names.length) throw new Error('Nenhuma aba encontrada.');
-    wsName = names[0];
-    names.forEach(n=>{
-      const opt = document.createElement('option');
-      opt.value=n; opt.textContent=n;
-      el('#sheetPicker').appendChild(opt);
-    });
-    el('#sheetPicker').disabled = false;
-    el('#reparse').disabled = true;
-    parseWorkbookSheet();
-    el('#reparse').disabled = false;
-    showOk(`Planilha carregada: ${file.name}`);
-  }catch(err){
-    console.error(err);
-    showError('Falha ao ler a planilha.', err?.message || String(err));
-  }
-});
-el('#sheetPicker').addEventListener('change', ()=>{ wsName = el('#sheetPicker').value; });
-el('#reparse').addEventListener('click', ()=>{
-  try{ if(wbCache) parseWorkbookSheet(); }
-  catch(err){ showError('Falha ao reprocessar a aba.', err?.message || String(err)); }
-});
-
-function parseWorkbookSheet(){
-  if(!wbCache || !wsName) throw new Error('Workbook não carregado.');
-  const ws = wbCache.Sheets[wsName];
-  if(!ws) throw new Error(`Aba "${wsName}" não encontrada.`);
-  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, raw:true, defval:''});
-  if(!aoa.length) throw new Error('Aba vazia.');
-  const headRowIdx = detectHeaderRow(aoa, el('#headerRow').value);
-  const headers = (aoa[headRowIdx] || []).map(h => String(h).trim());
-  const rowsAoA = aoa.slice(headRowIdx+1).filter(r=>r.some(v=>String(v).trim()!==''));
-  const rows = rowsAoA.map(r=>{
-    const obj={}; headers.forEach((h,i)=> obj[h] = (r[i]??''));
-    return obj;
-  });
-  processRows(rows, headers, wsName);
-}
-
-/* ---- CSV ---- */
-function parseCSVBuffer(buf){
-  let text;
-  try{ text = new TextDecoder('utf-8', {fatal:false}).decode(buf); } catch{ text = null; }
-  if(!text || looksGarbled(text)){
-    try{ text = new TextDecoder('latin1', {fatal:false}).decode(buf); }
-    catch(e){ throw new Error('Não foi possível decodificar o CSV (UTF-8/Latin-1).'); }
-  }
-  const sep = detectDelimiter(text);
-  const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
-  const hdrIdx = detectHeaderRow(lines.map(l=>l.split(sep)), null);
-  const headerLine = lines[hdrIdx];
-  const headers = (headerLine||'').split(sep).map(h=>String(h).trim());
-  const dataLines = lines.slice(hdrIdx+1);
-  const rows=[];
-  for(const line of dataLines){
-    const cells = line.split(sep);
-    const obj={}; headers.forEach((h,i)=> obj[h]=(cells[i]??'').trim());
-    rows.push(obj);
-  }
-  return {rows, headers};
-}
-function looksGarbled(t){ return (t.match(/\uFFFD/g)||[]).length > 3; }
-
-/* ---- Detecção de cabeçalho genérica ---- */
-function detectHeaderRow(aoa, preferred){
-  if(preferred){
-    const n = parseInt(preferred,10);
-    if(Number.isInteger(n) && n>=1 && n<=aoa.length) return n-1;
-  }
-  const maxCheck = Math.min(10, aoa.length);
-  let best = 0;
-  for(let i=0;i<maxCheck;i++){
-    const row = aoa[i] || [];
-    const norm = row.map(v=>normalizeKey(String(v)));
-    const hasPrefix = norm.some(v=>/^prefixo$/.test(v) || /^pref$/.test(v) || /^prefix$/.test(v) || v.includes('prefix'));
-    const nonEmpty = norm.filter(v=>v.length>0).length;
-    if(hasPrefix && nonEmpty>=1){ best = i; break; }
-    if(nonEmpty > (aoa[best]||[]).filter(v=>String(v).trim().length>0).length) best = i;
-  }
-  return best;
-}
-
-/* ---- Processamento comum ---- */
-function processRows(rows, headers, label){
-  const prefHeader = headers.find(h=>{
-    const k = normalizeKey(h);
-    return k==='prefixo' || k==='pref' || k==='prefix' || k.includes('prefix');
-  });
-  if(!prefHeader) throw new Error('Não achei a coluna "prefixo" (variações aceitas: prefixo, pref, prefix).');
-
-  groupedByPrefix = {};
-  for(const r of rows){
-    const p = String(r[prefHeader]??'').toString().trim();
-    if(!p) continue;
-    if(!groupedByPrefix[p]) groupedByPrefix[p]=[];
-    groupedByPrefix[p].push(r);
-  }
-  attachHeaders = headers;
-  updateAttachCountsAndAutoselect();
-
-  const prefixCount = Object.keys(groupedByPrefix).length;
-  el('#attachStats').textContent = `Fonte: ${label} • ${rows.length} linha(s) • ${prefixCount} prefixo(s)`;
-  el('#downloadZip').disabled = prefixCount===0;
-  el('#clearAttach').disabled = false;
-  renderContacts();
-}
-function updateAttachCountsAndAutoselect(){
-  const prefixes = new Set(Object.keys(groupedByPrefix));
-  contacts.forEach(c=>{
-    const count = prefixes.has(String(c.prefixo).trim()) ? groupedByPrefix[String(c.prefixo).trim()].length : 0;
-    c.attachCount = count;
-    if(count>0) c.selected = true;
-  });
-}
-
-/* ---------------- Ações anexos / mensagens / export ---------------- */
-el('#clearAttach').addEventListener('click', ()=>{
-  wbCache=null; wsName=null; groupedByPrefix={}; attachHeaders=[];
-  el('#sheetPicker').innerHTML=''; el('#sheetPicker').disabled = true;
-  el('#reparse').disabled = true;
-  contacts.forEach(c=> c.attachCount=0);
-  el('#attachStats').textContent='Sem planilha';
-  el('#errorBox').innerHTML='';
-  renderContacts();
-});
-el('#downloadZip').addEventListener('click', async ()=>{
-  if(!Object.keys(groupedByPrefix).length){ alert('Nenhuma planilha carregada.'); return; }
-  const zip = new JSZip();
-  let added=0;
-  for(const c of contacts.filter(c=>c.selected && c.attachCount>0)){
-    const pref = String(c.prefixo).trim();
-    const rows = groupedByPrefix[pref]||[];
-    const csv = toCSV(rows, attachHeaders);
-    zip.file(`${pref} - ${titleCaseName(c.nome)}.csv`, csv);
-    added++;
-  }
-  if(!added){ alert('Nenhum contato selecionado com linhas.'); return; }
-  const blob = await zip.generateAsync({type:'blob'});
-  saveAs(blob, 'anexos_por_prefixo.zip');
-});
+/* ---------------- Saída / Export ---------------- */
 el('#generateMsgs').addEventListener('click', ()=>{
   const body = el('#messageBody').value || '';
   const target = el('#output'); target.innerHTML='';
   const selected = contacts.filter(c=>c.selected);
   if(!selected.length){ target.innerHTML = `<div class="muted">Nenhum contato selecionado.</div>`; return; }
+
   for(const c of selected){
     const msg = buildMessageFor(c, body);
     const wrap = document.createElement('div');
     wrap.className='msg';
     const hasAttach = (c.attachCount||0)>0;
+
     wrap.innerHTML = `
       <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">
         <strong>${titleCaseName(c.nome)}</strong>
@@ -502,10 +395,19 @@ el('#generateMsgs').addEventListener('click', ()=>{
       </div>
     `;
     target.appendChild(wrap);
+
+    // copiar mensagem
     wrap.querySelector('[data-copy]').addEventListener('click', async ()=>{
-      try{ await navigator.clipboard.writeText(msg); const b=wrap.querySelector('[data-copy]'); b.textContent='Copiado!'; setTimeout(()=>b.textContent='Copiar mensagem',1200);}
-      catch{ const ta=document.createElement('textarea'); ta.value=msg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); const b=wrap.querySelector('[data-copy]'); b.textContent='Copiado!'; setTimeout(()=>b.textContent='Copiar mensagem',1200);}
+      try{
+        await navigator.clipboard.writeText(msg);
+        const b = wrap.querySelector('[data-copy]'); b.textContent='Copiado!'; setTimeout(()=>b.textContent='Copiar mensagem',1200);
+      }catch{
+        const ta=document.createElement('textarea'); ta.value=msg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+        const b = wrap.querySelector('[data-copy]'); b.textContent='Copiado!'; setTimeout(()=>b.textContent='Copiar mensagem',1200);
+      }
     });
+
+    // download csv por contato
     if(hasAttach){
       wrap.querySelector('[data-dl]').addEventListener('click', ()=>{
         const pref = String(c.prefixo).trim();
@@ -517,6 +419,8 @@ el('#generateMsgs').addEventListener('click', ()=>{
     }
   }
 });
+
+// Export CSV de selecionados (planejamento)
 el('#exportCSV').addEventListener('click', ()=>{
   const sel = contacts.filter(c=>c.selected);
   if(!sel.length){ alert('Nenhum contato selecionado.'); return; }
