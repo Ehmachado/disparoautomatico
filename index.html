@@ -20,7 +20,7 @@
   .card{background:var(--card);border-radius:16px;box-shadow:0 6px 24px rgba(3,7,18,.08);padding:16px}
   .card h2{margin:0 0 12px;font-size:16px}
   .helper{font-size:12px;color:var(--muted);margin-top:6px}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
   textarea,input[type="text"],select{width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;font:inherit}
   textarea{min-height:120px;resize:vertical}
   .btn{appearance:none;border:0;background:var(--bb-azul);color:#fff;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer}
@@ -48,7 +48,19 @@
   /* imagem compacta para não destoar da mensagem */
   .richmsg img{max-width:520px;width:100%;height:auto;border:1px solid #e5e7eb;border-radius:8px}
 
-  /* >>> NOVO: estados recolhido/expandido <<< */
+  /* editor rich text (campo 2) */
+  .rte-bar{display:flex;gap:6px;margin:8px 0}
+  .rte-btn{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer;font-weight:600}
+  .rte-btn.active{border-color:#c7d2fe;background:#eef2ff}
+  #messageBody{min-height:140px;border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff;overflow:auto}
+  #messageBody:focus{outline:2px solid #93c5fd; outline-offset:2px}
+  #messageBody:empty:before{content:attr(data-placeholder); color:#9ca3af}
+  #messageBody p{margin:.6em 0}
+  #messageBody b,#messageBody strong{font-weight:700}
+  #messageBody i,#messageBody em{font-style:italic}
+  #messageBody u{text-decoration:underline}
+
+  /* Recolher/expandir cartões */
   .msg__head{display:flex; gap:8px; align-items:center; margin-bottom:6px}
   .msg__toggle{margin-left:auto; font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; cursor:pointer}
   .msg.collapsed{background:#f8fafc}
@@ -74,9 +86,10 @@
 prefixo nome email
 123 Maria Clara Souza maria@empresa.com
 456 João Pedro joao@empresa.com"></textarea>
-      <div class="toolbar" style="margin-top:8px; align-items:center">
+      <div class="toolbar" style="margin-top:8px;">
         <button class="btn" id="loadContacts">Carregar contatos</button>
         <button class="btn ghost" id="clearContacts">Limpar</button>
+        <button class="btn ghost" id="refreshContacts">Atualizar</button>
         <input id="searchBox" type="text" placeholder="Filtrar por nome, email ou prefixo..." />
         <label class="small" style="display:flex; align-items:center; gap:6px">
           <input type="checkbox" id="keepContacts"> Manter contatos salvos neste navegador
@@ -103,7 +116,16 @@ prefixo nome email
     <section class="card">
       <h2>2) Mensagem</h2>
       <div class="helper">Abertura fixa: <b>“Olá &lt;Primeiro Nome&gt;, tudo bem?”</b>. Escreva somente o restante.</div>
-      <textarea id="messageBody" placeholder="Escreva aqui o texto após a saudação automática."></textarea>
+
+      <div class="rte-bar">
+        <button class="rte-btn" data-cmd="bold" title="Negrito (Ctrl+B)">B</button>
+        <button class="rte-btn" data-cmd="italic" title="Itálico (Ctrl+I)"><i>I</i></button>
+        <button class="rte-btn" data-cmd="underline" title="Sublinhado (Ctrl+U)"><u>U</u></button>
+        <button class="btn ghost right" id="refreshMsg">Atualizar</button>
+      </div>
+
+      <div id="messageBody" contenteditable="true" data-placeholder="Escreva aqui o texto após a saudação automática. Use os botões para negrito/itálico/sublinhado."></div>
+
       <div class="helper">A imagem (print) inclui o <b>título</b>, o <b>cabeçalho</b> e as <b>linhas do contato</b>.</div>
       <div style="margin-top:8px">
         <label class="muted">Prévia:</label>
@@ -130,6 +152,7 @@ prefixo nome email
         <input id="headerRow" type="text" placeholder="1 (padrão)" style="width:120px">
         <button class="btn" id="usePasted">Usar dados colados</button>
         <button class="btn ghost" id="clearAttach" disabled>Limpar dados</button>
+        <button class="btn ghost" id="refreshSheet">Atualizar</button>
         <div class="right"><span id="attachStats" class="badge">Sem dados</span></div>
       </div>
       <div id="errorBox" class="helper"></div>
@@ -145,7 +168,10 @@ prefixo nome email
 
     <!-- 4) Saída -->
     <section class="card" style="grid-column: span 2">
-      <h2>4) Mensagens geradas (copiar & colar)</h2>
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <h2 style="margin:0">4) Mensagens geradas (copiar & colar)</h2>
+        <button class="btn ghost" id="refreshAll">Atualizar</button>
+      </div>
       <div class="helper">“Copiar mensagem” envia HTML com a imagem + PNG no clipboard (quando suportado). Se não suportar, cai para cópia rica via elemento oculto; por último, texto.</div>
       <div id="output" class="list"></div>
     </section>
@@ -222,7 +248,7 @@ function extractFromEditable(container){
   return { headers, rowsAoA };
 }
 
-/* Aplicar dados colados */
+/* Aplicar dados colados manualmente */
 el('#usePasted').addEventListener('click', ()=>{
   try{
     const { headers: h0, rowsAoA } = extractFromEditable(sheetPaste);
@@ -323,6 +349,58 @@ el('#contactsTable').addEventListener('change', e=>{ if(e.target.matches('input[
 el('#selectAll').addEventListener('change', e=>{ const check = e.target.checked; filteredContactsIdx.forEach(i=>{ if(contacts[i]) contacts[i].selected = check; }); renderContacts(); updatePreview(); });
 el('#searchBox').addEventListener('input', debounce(()=>{ renderContacts(); updatePreview(); },150));
 
+/* ---------------- Editor Rich Text (campo 2) ---------------- */
+const messageBody = el('#messageBody');
+document.querySelectorAll('.rte-btn[data-cmd]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const cmd = btn.getAttribute('data-cmd');
+    document.execCommand(cmd, false, null);
+    messageBody.focus();
+    updatePreviewDebounced();
+  });
+});
+messageBody.addEventListener('paste', (e)=>{
+  e.preventDefault();
+  const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+  document.execCommand('insertText', false, text);
+});
+function sanitizeEditorHTML(html){
+  const allowed = new Set(['B','STRONG','I','EM','U','BR','P']);
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  (function walk(node){
+    const children = Array.from(node.childNodes);
+    for(const ch of children){
+      if(ch.nodeType === 1){
+        if(!allowed.has(ch.tagName)){
+          while(ch.firstChild) node.insertBefore(ch.firstChild, ch);
+          node.removeChild(ch);
+        }else{
+          [...ch.attributes].forEach(a=>{
+            if(!/^style$/i.test(a.name)) ch.removeAttribute(a.name);
+            else ch.removeAttribute('style');
+          });
+          walk(ch);
+        }
+      }
+    }
+  })(tmp);
+  tmp.querySelectorAll('div').forEach(d=>{
+    const p = document.createElement('p');
+    p.innerHTML = d.innerHTML;
+    d.replaceWith(p);
+  });
+  return tmp.innerHTML
+    .replace(/&nbsp;/g,' ')
+    .replace(/<p>\s*<\/p>/g,'');
+}
+function getEditorHTMLClean(){
+  const raw = messageBody.innerHTML || '';
+  const clean = sanitizeEditorHTML(raw);
+  return clean.trim();
+}
+const updatePreviewDebounced = debounce(()=>updatePreview(),120);
+
 /* ---------------- PRINT compacto (Canvas → PNG ~520px) ---------------- */
 async function buildPrintForContact(idx){
   const titulo = el('#sheetTitle').value.trim() || 'Planilha';
@@ -369,7 +447,7 @@ async function buildPrintForContact(idx){
   }
   ctx.fillStyle = '#111827'; ctx.font = fontBold;
   let tx = x + border;
-  headers.forEach((h,i)=>{ ctx.fillText(String(h), tx + 8, y + 20); tx += colW[i]; });
+  headers.forEach((h,i)=>{ ctx.fillText(String(h), tx + 8, y + 20); });
   ctx.font = font; ctx.fillStyle = '#111827';
   let ry = y + headerH + 20;
   rows.forEach(r=>{
@@ -399,22 +477,29 @@ async function buildPrintForContact(idx){
 }
 
 /* ---------------- Mensagem com imagem ---------------- */
-function buildMessageHTML(contact, dataUrl, body){
+function buildMessageHTML(contact, dataUrl, bodyHTMLClean){
   const nome = firstName(contact?.nome);
-  const bodyHTML = body && body.trim() ? `<p>${escapeHTML(body.trim()).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>')}</p>` : '';
+  const intro = `<p>Olá ${nome}, tudo bem?</p>`;
+  const content = bodyHTMLClean ? bodyHTMLClean : '';
   const imgHTML = dataUrl ? `<div class="separator"></div><div class="imgwrap"><img src="${dataUrl}" alt="print da planilha"></div>` : '';
-  return `<div class="richmsg"><p>Olá ${nome}, tudo bem?</p>${bodyHTML}${imgHTML}</div>`;
+  return `<div class="richmsg">${intro}${content}${imgHTML}</div>`;
 }
-function buildMessagePlainText(contact, body){
+function htmlToPlainText(html){
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return (tmp.textContent || tmp.innerText || '').trim();
+}
+function buildMessagePlainText(contact, bodyHTMLClean){
   const nome = firstName(contact?.nome);
-  const partBody = body && body.trim() ? `\n\n${body.trim()}` : '';
+  const bodyTxt = htmlToPlainText(bodyHTMLClean || '');
+  const partBody = bodyTxt ? `\n\n${bodyTxt}` : '';
   return `Olá ${nome}, tudo bem?${partBody}\n\n[Print da planilha anexado]`;
 }
-function escapeHTML(s){ return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
 /* ---------------- Prévia ---------------- */
 async function updatePreview(){
-  const box = el('#previewBox'); const body = el('#messageBody').value || '';
+  const box = el('#previewBox');
+  const bodyHTMLClean = getEditorHTMLClean();
   let idx = contacts.findIndex(c=>c.selected); if(idx<0) idx = contacts.length?0:-1;
   if(idx<0){
     box.innerHTML = `<div class="richmsg"><p>Olá Fulano, tudo bem?</p><p class="muted">[sua mensagem]</p></div><div class="separator"></div><div class="imgwrap"><div class="muted">[Imagem do print aparecerá aqui]</div></div>`;
@@ -422,13 +507,13 @@ async function updatePreview(){
   }
   let img = imageCacheByContact.get(idx);
   if(!img){ img = await buildPrintForContact(idx); imageCacheByContact.set(idx, img); }
-  const html = buildMessageHTML(contacts[idx], img?.dataUrl || '', body);
+  const html = buildMessageHTML(contacts[idx], img?.dataUrl || '', bodyHTMLClean);
   box.innerHTML = html;
 }
-el('#messageBody').addEventListener('input', debounce(updatePreview,120));
+messageBody.addEventListener('input', updatePreview);
+messageBody.addEventListener('keyup', updatePreview);
 
 /* ---------------- Cópia rica robusta ---------------- */
-/* Fallback para copiar HTML com imagem mesmo sem ClipboardItem: usa contenteditable oculto */
 function copyHTMLViaHiddenEditable(html){
   return new Promise((resolve,reject)=>{
     const div = document.createElement('div');
@@ -454,23 +539,18 @@ function copyHTMLViaHiddenEditable(html){
 }
 
 async function copyMessage(htmlMsg, textMsg, imgBlob){
-  // Tentativa 1: ClipboardItem com HTML + PNG + texto
   if (navigator.clipboard && window.ClipboardItem){
     try{
       const itemData = { 'text/html': new Blob([htmlMsg], {type:'text/html'}), 'text/plain': new Blob([textMsg], {type:'text/plain'}) };
       if(imgBlob){ itemData['image/png'] = imgBlob; }
       await navigator.clipboard.write([ new ClipboardItem(itemData) ]);
       return 'html';
-    }catch(e){
-      // continua para o fallback
-    }
+    }catch(e){}
   }
-  // Tentativa 2: copiar HTML via contenteditable oculto
   try{
     await copyHTMLViaHiddenEditable(htmlMsg);
     return 'html';
   }catch(e){
-    // Tentativa 3: texto puro
     try{
       await navigator.clipboard.writeText(textMsg);
       return 'text';
@@ -481,8 +561,7 @@ async function copyMessage(htmlMsg, textMsg, imgBlob){
   }
 }
 
-/* ---------------- Geração / Cópia ---------------- */
-/* >>> NOVO: recolher/expandir cartões após copiar <<< */
+/* Recolher/expandir cartões */
 function setCollapsed(wrap, collapsed){
   if(collapsed){
     wrap.classList.add('collapsed');
@@ -495,73 +574,78 @@ function setCollapsed(wrap, collapsed){
   }
 }
 
-el('#generateMsgs').addEventListener('click', async ()=>{
-  const body = el('#messageBody').value || '';
+/* ---------------- Geração / Cópia ---------------- */
+function buildAndMountCardForIdx(idx, bodyHTMLClean){
+  const c = contacts[idx];
+  const img = imageCacheByContact.get(idx) || null;
+  const htmlMsg = buildMessageHTML(c, img?.dataUrl || '', bodyHTMLClean);
+  const textMsg = buildMessagePlainText(c, bodyHTMLClean);
+
+  const wrap = document.createElement('div');
+  wrap.className='msg';
+  wrap.innerHTML = `
+    <div class="msg__head">
+      <strong>${titleCaseName(c.nome)}</strong>
+      <span class="badge">${c.email||'sem email'}</span>
+      <span class="badge">Prefixo: ${c.prefixo||'-'}</span>
+      <button class="msg__toggle" data-toggle>Recolher</button>
+    </div>
+    <div class="msg__body">
+      <div class="richmsg" data-htmlmsg></div>
+      <div class="toolbar" style="margin-top:8px">
+        <button class="btn" data-copy>Copiar mensagem (com imagem)</button>
+        <button class="btn ghost" data-dlimg ${img?'':'disabled'}>Baixar PNG</button>
+        <button class="btn ghost" data-dl>Baixar CSV (${(groupedRowsByContact.get(idx)||[]).length || 0})</button>
+      </div>
+    </div>
+  `;
+  wrap.querySelector('[data-htmlmsg]').innerHTML = htmlMsg;
+  el('#output').appendChild(wrap);
+
+  wrap.querySelector('[data-toggle]').addEventListener('click', ()=>{
+    setCollapsed(wrap, !wrap.classList.contains('collapsed'));
+  });
+
+  wrap.querySelector('[data-copy]').addEventListener('click', async ()=>{
+    const mode = await copyMessage(htmlMsg, textMsg, img?.blob);
+    const b=wrap.querySelector('[data-copy]');
+    b.textContent = mode==='html' ? 'Copiado!' : 'Copiado (texto)';
+    setTimeout(()=>b.textContent='Copiar mensagem (com imagem)',1200);
+    setCollapsed(wrap, true);
+  });
+
+  if(img?.blob){
+    wrap.querySelector('[data-dlimg]').addEventListener('click', ()=>{
+      downloadBlob(`${String(c.prefixo||'print')} - ${titleCaseName(c.nome)}.png`, img.blob);
+    });
+  }
+
+  wrap.querySelector('[data-dl]').addEventListener('click', ()=>{
+    const rows = groupedRowsByContact.get(idx) || [];
+    if(!rows.length){ alert('Sem linhas para este contato.'); return; }
+    const csv = toCSV(rows, headers);
+    const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+    downloadBlob(`${String(c.prefixo||'sem-prefixo')} - ${titleCaseName(c.nome)}.csv`, blob);
+  });
+}
+
+async function regenerateOutput(){
+  const bodyHTMLClean = getEditorHTMLClean();
   const target = el('#output'); target.innerHTML='';
   const selectedIdx = contacts.map((c,i)=> c.selected ? i : -1).filter(i=>i>=0);
   if(!selectedIdx.length){ target.innerHTML = `<div class="muted">Nenhum contato selecionado.</div>`; return; }
 
-  // garante prints prontos
-  for(const idx of selectedIdx){ if(!imageCacheByContact.get(idx)){ const img = await buildPrintForContact(idx); imageCacheByContact.set(idx, img); } }
-
-  selectedIdx.forEach(idx=>{
-    const c = contacts[idx];
-    const img = imageCacheByContact.get(idx) || null;
-    const htmlMsg = buildMessageHTML(c, img?.dataUrl || '', body);
-    const textMsg = buildMessagePlainText(c, body);
-
-    const wrap = document.createElement('div');
-    wrap.className='msg';
-    wrap.innerHTML = `
-      <div class="msg__head">
-        <strong>${titleCaseName(c.nome)}</strong>
-        <span class="badge">${c.email||'sem email'}</span>
-        <span class="badge">Prefixo: ${c.prefixo||'-'}</span>
-        <button class="msg__toggle" data-toggle>Recolher</button>
-      </div>
-      <div class="msg__body">
-        <div class="richmsg" data-htmlmsg></div>
-        <div class="toolbar" style="margin-top:8px">
-          <button class="btn" data-copy>Copiar mensagem (com imagem)</button>
-          <button class="btn ghost" data-dlimg ${img?'':'disabled'}>Baixar PNG</button>
-          <button class="btn ghost" data-dl>Baixar CSV (${c.attachCount||0})</button>
-        </div>
-      </div>
-    `;
-    wrap.querySelector('[data-htmlmsg]').innerHTML = htmlMsg;
-    el('#output').appendChild(wrap);
-
-    // Toggle recolher/expandir
-    wrap.querySelector('[data-toggle]').addEventListener('click', ()=>{
-      setCollapsed(wrap, !wrap.classList.contains('collapsed'));
-    });
-
-    // Copiar mensagem: após copiar, RECOLHE automaticamente
-    wrap.querySelector('[data-copy]').addEventListener('click', async ()=>{
-      const mode = await copyMessage(htmlMsg, textMsg, img?.blob);
-      const b=wrap.querySelector('[data-copy]');
-      b.textContent = mode==='html' ? 'Copiado!' : 'Copiado (texto)';
-      setTimeout(()=>b.textContent='Copiar mensagem (com imagem)',1200);
-      // >>> recolher automaticamente <<<
-      setCollapsed(wrap, true);
-    });
-
-    // PNG por contato
-    if(img?.blob){
-      wrap.querySelector('[data-dlimg]').addEventListener('click', ()=>{
-        downloadBlob(`${String(c.prefixo||'print')} - ${titleCaseName(c.nome)}.png`, img.blob);
-      });
+  for(const idx of selectedIdx){
+    if(!imageCacheByContact.get(idx)){
+      const img = await buildPrintForContact(idx);
+      imageCacheByContact.set(idx, img);
     }
+  }
+  selectedIdx.forEach(idx=> buildAndMountCardForIdx(idx, bodyHTMLClean));
+}
 
-    // CSV por contato
-    wrap.querySelector('[data-dl]').addEventListener('click', ()=>{
-      const rows = groupedRowsByContact.get(idx) || [];
-      if(!rows.length){ alert('Sem linhas para este contato.'); return; }
-      const csv = toCSV(rows, headers);
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-      downloadBlob(`${String(c.prefixo||'sem-prefixo')} - ${titleCaseName(c.nome)}.csv`, blob);
-    });
-  });
+el('#generateMsgs').addEventListener('click', async ()=>{
+  await regenerateOutput();
 });
 
 /* ZIP com todos os PRINTS */
@@ -580,9 +664,9 @@ el('#downloadZip').addEventListener('click', async ()=>{
 
 /* ---------------- Prévia dinâmica ---------------- */
 function updatePreviewOnChange(){ updatePreview(); }
-el('#messageBody').addEventListener('input', debounce(updatePreviewOnChange,120));
+messageBody.addEventListener('input', debounce(updatePreviewOnChange,120));
 
-/* ---------------- Contatos ---------------- */
+/* ---------------- Contatos (duplicadas utilitárias p/ isolação) ---------------- */
 function detectDelimiter(text){ const sample=text.split(/\r?\n/).slice(0,5).join('\n'); const c=ch=>(sample.match(new RegExp('\\'+ch,'g'))||[]).length; const score=[{d:'\t',n:c('\t')},{d:';',n:c(';')},{d:',',n:c(',')}].sort((a,b)=>b.n-a.n); return score[0].n>0?score[0].d:'\t'; }
 function parseContacts(raw){
   raw = (raw||"").trim(); if(!raw) return [];
@@ -614,8 +698,6 @@ function renderContacts(){
   });
   el('#contactStats').textContent = `${contacts.length} contato${contacts.length===1?'':'s'} • ${filteredContactsIdx.length} exibido${filteredContactsIdx.length===1?'':'s'}`;
 }
-
-/* salvar contatos */
 function saveContactsIfEnabled(){ if(el('#keepContacts').checked){ localStorage.setItem('savedContactsRaw', el('#contactsInput').value || ''); localStorage.setItem('keepContacts', '1'); } else { localStorage.removeItem('savedContactsRaw'); localStorage.setItem('keepContacts', '0'); } }
 function loadSavedContactsOnStart(){
   const keep = localStorage.getItem('keepContacts') === '1'; el('#keepContacts').checked = keep;
@@ -629,6 +711,51 @@ el('#clearContacts').addEventListener('click', ()=>{ contacts=[]; el('#contactsI
 el('#contactsTable').addEventListener('change', e=>{ if(e.target.matches('input[type="checkbox"][data-idx]')){ const i=Number(e.target.getAttribute('data-idx')); if(!Number.isNaN(i) && contacts[i]) contacts[i].selected = e.target.checked; updatePreview(); } });
 el('#selectAll').addEventListener('change', e=>{ const check = e.target.checked; filteredContactsIdx.forEach(i=>{ if(contacts[i]) contacts[i].selected = check; }); renderContacts(); updatePreview(); });
 el('#searchBox').addEventListener('input', debounce(()=>{ renderContacts(); updatePreview(); },150));
+
+/* ---------------- Botões Atualizar (todos os campos) ---------------- */
+async function doFullRefresh(){
+  // 1) Recarrega contatos do textarea (se houver)
+  const rawContacts = el('#contactsInput').value.trim();
+  if(rawContacts){
+    const parsed = parseContacts(rawContacts);
+    if(parsed.length){
+      contacts = parsed;
+    }
+  }
+  // 2) Reaplica dados colados da planilha (se houver)
+  try{
+    const { headers: h0, rowsAoA } = extractFromEditable(sheetPaste);
+    if(h0?.length && rowsAoA?.length){
+      const hdrRowInput = el('#headerRow').value.trim();
+      let hdrIdx = 0;
+      if(hdrRowInput){ const n = parseInt(hdrRowInput,10); if(Number.isInteger(n) && n>=1 && n<=rowsAoA.length+1){ hdrIdx = n-1; } }
+      const aoaFull = [h0, ...rowsAoA];
+      const headersRow = aoaFull[hdrIdx] || aoaFull[0];
+      headers = headersRow.map(x=>String(x||'').trim());
+      const dataAoA = aoaFull.slice(hdrIdx+1).filter(r=>r.some(v=>String(v).trim()!==''));
+      rowsAll = dataAoA.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o; });
+      imageCacheByContact.clear(); // prints podem mudar
+      el('#attachStats').textContent = `Planilha colada: ${rowsAll.length} linha(s) • ${headers.length} coluna(s)`;
+      el('#clearAttach').disabled = rowsAll.length===0;
+      el('#downloadZip').disabled = rowsAll.length===0;
+    }
+  }catch(e){ /* silencioso */ }
+
+  // 3) Reconta associações e atualiza lista
+  recountAndAutoselect();
+
+  // 4) Atualiza prévia
+  await updatePreview();
+
+  // 5) Regenera saída
+  await regenerateOutput();
+}
+
+/* Botões individuais e global (Campo 4) */
+el('#refreshContacts').addEventListener('click', doFullRefresh);
+el('#refreshMsg').addEventListener('click', doFullRefresh);
+el('#refreshSheet').addEventListener('click', doFullRefresh);
+el('#refreshAll').addEventListener('click', doFullRefresh);
 </script>
 </body>
 </html>
