@@ -45,7 +45,6 @@
   .richmsg p{margin:.5em 0}
   .separator{margin:10px 0;height:1px;background:#e5e7eb}
   .imgwrap{display:flex;flex-direction:column;gap:8px}
-  /* imagem compacta para não destoar da mensagem */
   .richmsg img{max-width:520px;width:100%;height:auto;border:1px solid #e5e7eb;border-radius:8px}
 
   /* editor rich text (campo 2) */
@@ -170,7 +169,15 @@ prefixo nome email
     <section class="card" style="grid-column: span 2">
       <div class="row" style="justify-content:space-between; align-items:center">
         <h2 style="margin:0">4) Mensagens geradas (copiar & colar)</h2>
-        <button class="btn ghost" id="refreshAll">Atualizar</button>
+        <div class="row" style="gap:8px; align-items:center">
+          <!-- NOVO: seletor de ordenação -->
+          <label class="small" for="sortOrder">Ordenar:</label>
+          <select id="sortOrder" style="width:auto">
+            <option value="original" selected>Original</option>
+            <option value="nome_az">Nome (A→Z)</option>
+          </select>
+          <button class="btn ghost" id="refreshAll">Atualizar</button>
+        </div>
       </div>
       <div class="helper">“Copiar mensagem” envia HTML com a imagem + PNG no clipboard (quando suportado). Se não suportar, cai para cópia rica via elemento oculto; por último, texto.</div>
       <div id="output" class="list"></div>
@@ -629,11 +636,28 @@ function buildAndMountCardForIdx(idx, bodyHTMLClean){
   });
 }
 
+/* NOVO: ordenação do Campo 4 */
+function sortSelectedIndices(selectedIdx){
+  const mode = (el('#sortOrder')?.value || 'original');
+  if(mode === 'nome_az'){
+    const arr = selectedIdx.slice().map(i=>({
+      i,
+      key: stripAccents(firstName(contacts[i]?.nome || '')).toLowerCase()
+    }));
+    arr.sort((a,b)=> a.key.localeCompare(b.key));
+    return arr.map(x=>x.i);
+  }
+  return selectedIdx; // original
+}
+
 async function regenerateOutput(){
   const bodyHTMLClean = getEditorHTMLClean();
   const target = el('#output'); target.innerHTML='';
-  const selectedIdx = contacts.map((c,i)=> c.selected ? i : -1).filter(i=>i>=0);
+  let selectedIdx = contacts.map((c,i)=> c.selected ? i : -1).filter(i=>i>=0);
   if(!selectedIdx.length){ target.innerHTML = `<div class="muted">Nenhum contato selecionado.</div>`; return; }
+
+  // aplica ordenação escolhida
+  selectedIdx = sortSelectedIndices(selectedIdx);
 
   for(const idx of selectedIdx){
     if(!imageCacheByContact.get(idx)){
@@ -714,7 +738,6 @@ el('#searchBox').addEventListener('input', debounce(()=>{ renderContacts(); upda
 
 /* ---------------- Botões Atualizar (todos os campos) ---------------- */
 async function doFullRefresh(){
-  // 1) Recarrega contatos do textarea (se houver)
   const rawContacts = el('#contactsInput').value.trim();
   if(rawContacts){
     const parsed = parseContacts(rawContacts);
@@ -722,7 +745,6 @@ async function doFullRefresh(){
       contacts = parsed;
     }
   }
-  // 2) Reaplica dados colados da planilha (se houver)
   try{
     const { headers: h0, rowsAoA } = extractFromEditable(sheetPaste);
     if(h0?.length && rowsAoA?.length){
@@ -734,28 +756,24 @@ async function doFullRefresh(){
       headers = headersRow.map(x=>String(x||'').trim());
       const dataAoA = aoaFull.slice(hdrIdx+1).filter(r=>r.some(v=>String(v).trim()!==''));
       rowsAll = dataAoA.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o; });
-      imageCacheByContact.clear(); // prints podem mudar
+      imageCacheByContact.clear();
       el('#attachStats').textContent = `Planilha colada: ${rowsAll.length} linha(s) • ${headers.length} coluna(s)`;
       el('#clearAttach').disabled = rowsAll.length===0;
       el('#downloadZip').disabled = rowsAll.length===0;
     }
-  }catch(e){ /* silencioso */ }
+  }catch(e){}
 
-  // 3) Reconta associações e atualiza lista
   recountAndAutoselect();
-
-  // 4) Atualiza prévia
   await updatePreview();
-
-  // 5) Regenera saída
   await regenerateOutput();
 }
 
-/* Botões individuais e global (Campo 4) */
 el('#refreshContacts').addEventListener('click', doFullRefresh);
 el('#refreshMsg').addEventListener('click', doFullRefresh);
 el('#refreshSheet').addEventListener('click', doFullRefresh);
 el('#refreshAll').addEventListener('click', doFullRefresh);
+/* Regenerar automaticamente ao trocar a ordenação */
+el('#sortOrder').addEventListener('change', regenerateOutput);
 </script>
 </body>
 </html>
