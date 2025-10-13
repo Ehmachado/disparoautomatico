@@ -47,6 +47,12 @@
   .imgwrap{display:flex;flex-direction:column;gap:8px}
   /* imagem compacta para não destoar da mensagem */
   .richmsg img{max-width:520px;width:100%;height:auto;border:1px solid #e5e7eb;border-radius:8px}
+
+  /* >>> NOVO: estados recolhido/expandido <<< */
+  .msg__head{display:flex; gap:8px; align-items:center; margin-bottom:6px}
+  .msg__toggle{margin-left:auto; font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; cursor:pointer}
+  .msg.collapsed{background:#f8fafc}
+  .msg.collapsed .msg__body{display:none}
 </style>
 </head>
 <body>
@@ -454,12 +460,12 @@ async function copyMessage(htmlMsg, textMsg, imgBlob){
       const itemData = { 'text/html': new Blob([htmlMsg], {type:'text/html'}), 'text/plain': new Blob([textMsg], {type:'text/plain'}) };
       if(imgBlob){ itemData['image/png'] = imgBlob; }
       await navigator.clipboard.write([ new ClipboardItem(itemData) ]);
-      return 'html'; // sucesso
+      return 'html';
     }catch(e){
-      // cai para fallback
+      // continua para o fallback
     }
   }
-  // Tentativa 2: copiar HTML via contenteditable oculto (inclui <img src="data:...">)
+  // Tentativa 2: copiar HTML via contenteditable oculto
   try{
     await copyHTMLViaHiddenEditable(htmlMsg);
     return 'html';
@@ -476,12 +482,26 @@ async function copyMessage(htmlMsg, textMsg, imgBlob){
 }
 
 /* ---------------- Geração / Cópia ---------------- */
+/* >>> NOVO: recolher/expandir cartões após copiar <<< */
+function setCollapsed(wrap, collapsed){
+  if(collapsed){
+    wrap.classList.add('collapsed');
+    const btn = wrap.querySelector('[data-toggle]');
+    if(btn) btn.textContent = 'Expandir';
+  }else{
+    wrap.classList.remove('collapsed');
+    const btn = wrap.querySelector('[data-toggle]');
+    if(btn) btn.textContent = 'Recolher';
+  }
+}
+
 el('#generateMsgs').addEventListener('click', async ()=>{
   const body = el('#messageBody').value || '';
   const target = el('#output'); target.innerHTML='';
   const selectedIdx = contacts.map((c,i)=> c.selected ? i : -1).filter(i=>i>=0);
   if(!selectedIdx.length){ target.innerHTML = `<div class="muted">Nenhum contato selecionado.</div>`; return; }
 
+  // garante prints prontos
   for(const idx of selectedIdx){ if(!imageCacheByContact.get(idx)){ const img = await buildPrintForContact(idx); imageCacheByContact.set(idx, img); } }
 
   selectedIdx.forEach(idx=>{
@@ -493,34 +513,47 @@ el('#generateMsgs').addEventListener('click', async ()=>{
     const wrap = document.createElement('div');
     wrap.className='msg';
     wrap.innerHTML = `
-      <div style="display:flex; gap:8px; align-items:center; margin-bottom:6px">
+      <div class="msg__head">
         <strong>${titleCaseName(c.nome)}</strong>
         <span class="badge">${c.email||'sem email'}</span>
-        <span class="right badge">Prefixo: ${c.prefixo||'-'}</span>
+        <span class="badge">Prefixo: ${c.prefixo||'-'}</span>
+        <button class="msg__toggle" data-toggle>Recolher</button>
       </div>
-      <div class="richmsg" data-htmlmsg></div>
-      <div class="toolbar" style="margin-top:8px">
-        <button class="btn" data-copy>Copiar mensagem (com imagem)</button>
-        <button class="btn ghost" data-dlimg ${img?'':'disabled'}>Baixar PNG</button>
-        <button class="btn ghost" data-dl>Baixar CSV (${c.attachCount||0})</button>
+      <div class="msg__body">
+        <div class="richmsg" data-htmlmsg></div>
+        <div class="toolbar" style="margin-top:8px">
+          <button class="btn" data-copy>Copiar mensagem (com imagem)</button>
+          <button class="btn ghost" data-dlimg ${img?'':'disabled'}>Baixar PNG</button>
+          <button class="btn ghost" data-dl>Baixar CSV (${c.attachCount||0})</button>
+        </div>
       </div>
     `;
     wrap.querySelector('[data-htmlmsg]').innerHTML = htmlMsg;
     el('#output').appendChild(wrap);
 
+    // Toggle recolher/expandir
+    wrap.querySelector('[data-toggle]').addEventListener('click', ()=>{
+      setCollapsed(wrap, !wrap.classList.contains('collapsed'));
+    });
+
+    // Copiar mensagem: após copiar, RECOLHE automaticamente
     wrap.querySelector('[data-copy]').addEventListener('click', async ()=>{
       const mode = await copyMessage(htmlMsg, textMsg, img?.blob);
       const b=wrap.querySelector('[data-copy]');
       b.textContent = mode==='html' ? 'Copiado!' : 'Copiado (texto)';
       setTimeout(()=>b.textContent='Copiar mensagem (com imagem)',1200);
+      // >>> recolher automaticamente <<<
+      setCollapsed(wrap, true);
     });
 
+    // PNG por contato
     if(img?.blob){
       wrap.querySelector('[data-dlimg]').addEventListener('click', ()=>{
         downloadBlob(`${String(c.prefixo||'print')} - ${titleCaseName(c.nome)}.png`, img.blob);
       });
     }
 
+    // CSV por contato
     wrap.querySelector('[data-dl]').addEventListener('click', ()=>{
       const rows = groupedRowsByContact.get(idx) || [];
       if(!rows.length){ alert('Sem linhas para este contato.'); return; }
