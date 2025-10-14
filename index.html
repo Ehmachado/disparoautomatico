@@ -470,76 +470,24 @@ function buildMessagePlainText(contact, bodyHTMLClean){
   return `Olá ${nome}, tudo bem?${partBody}\n\n[Print da planilha anexado]`;
 }
 
-/* ---------------- PRÉVIA (ATUALIZADA) ---------------- */
+/* ---------------- PRÉVIA ---------------- */
 async function updatePreview(){
   const box = el('#previewBox');
   const bodyHTMLClean = getEditorHTMLClean();
-
-  // tenta achar um contato selecionado; se não houver, usa "Fulano" SEM imagem
-  let idx = contacts.findIndex(c=>c.selected);
-  if(idx < 0){
+  let idx = contacts.findIndex(c=>c.selected); if(idx<0) idx = contacts.length?0:-1;
+  if(idx<0){
     const htmlSemContato = `<div class="richmsg"><p>Olá Fulano, tudo bem?</p>${bodyHTMLClean || '<p class="muted">[sua mensagem]</p>'}</div>`;
     box.innerHTML = htmlSemContato;
     return;
   }
-
-  // há contato; tenta montar imagem (se não existir, mostra só texto)
   let img = imageCacheByContact.get(idx);
   if(!img){ img = await buildPrintForContact(idx); imageCacheByContact.set(idx, img); }
-
   const html = buildMessageHTML(contacts[idx], img?.dataUrl || '', bodyHTMLClean);
   box.innerHTML = html;
 }
+const messageBody = el('#messageBody');
 messageBody.addEventListener('input', updatePreview);
 messageBody.addEventListener('keyup', updatePreview);
-
-/* ---------------- Cópia rica robusta ---------------- */
-function copyHTMLViaHiddenEditable(html){
-  return new Promise((resolve,reject)=>{
-    const div = document.createElement('div');
-    div.contentEditable = 'true';
-    div.style.position = 'fixed';
-    div.style.left = '-99999px';
-    div.style.top = '0';
-    div.style.opacity = '0';
-    div.innerHTML = html;
-    document.body.appendChild(div);
-
-    const range = document.createRange();
-    range.selectNodeContents(div);
-    const sel = window.getSelection();
-    sel.removeAllRanges();
-    sel.addRange(range);
-
-    const ok = document.execCommand('copy');
-    sel.removeAllRanges();
-    div.remove();
-    ok ? resolve() : reject(new Error('execCommand falhou'));
-  });
-}
-
-async function copyMessage(htmlMsg, textMsg, imgBlob){
-  if (navigator.clipboard && window.ClipboardItem){
-    try{
-      const itemData = { 'text/html': new Blob([htmlMsg], {type:'text/html'}), 'text/plain': new Blob([textMsg], {type:'text/plain'}) };
-      if(imgBlob){ itemData['image/png'] = imgBlob; }
-      await navigator.clipboard.write([ new ClipboardItem(itemData) ]);
-      return 'html';
-    }catch(e){}
-  }
-  try{
-    await copyHTMLViaHiddenEditable(htmlMsg);
-    return 'html';
-  }catch(e){
-    try{
-      await navigator.clipboard.writeText(textMsg);
-      return 'text';
-    }catch{
-      const ta=document.createElement('textarea'); ta.value=textMsg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-      return 'text';
-    }
-  }
-}
 
 /* Recolher/expandir cartões */
 function setCollapsed(wrap, collapsed){
@@ -745,91 +693,212 @@ el('#refreshAll').addEventListener('click', doFullRefresh);
 /* Regenerar automaticamente ao trocar a ordenação */
 el('#sortOrder').addEventListener('change', regenerateOutput);
 
-/* ---------------- NOVO: Exportar mensagens para Excel (.xls) — tblDisparos ---------------- */
-function buildExcelHTMLFromOutput(){
-  const cards = Array.from(document.querySelectorAll('#output .msg'));
-  if(!cards.length) return null;
+/* ------------- NOVO: Exportar mensagens para SharePoint (.xlsx) — tblDisparos ------------- */
+/* Gera um arquivo XLSX (OpenXML) com:
+   - Aba "tblDisparos"
+   - Tabela oficial (Ctrl+T) "tblDisparos" cobrindo A1:Cn
+   - Colunas: Prefixo | Contato (e-mail) | Mensagem (HTML com <img> base64)
+*/
+function xmlEscape(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
 
-  let rowsHTML = '';
-  cards.forEach(card=>{
+function collectRowsForExport(){
+  const cards = Array.from(document.querySelectorAll('#output .msg'));
+  if(!cards.length) return [];
+  return cards.map(card=>{
     const badges = card.querySelectorAll('.badge');
     const email = badges[0]?.textContent || '';
     const prefixo= (badges[1]?.textContent || '').replace(/^Prefixo:\s*/,'');
     const msgHTML= card.querySelector('[data-htmlmsg]')?.innerHTML || '';
-    rowsHTML += `
-      <tr>
-        <td>${escapeHTML(prefixo)}</td>
-        <td>${escapeHTML(email)}</td>
-        <td class="xl-msg"><div class="richmsg">${msgHTML}</div></td>
-      </tr>`;
+    return {prefixo, email, msgHTML: `<div class="richmsg">${msgHTML}</div>`};
   });
-
-  const htmlDoc =
-`<!DOCTYPE html>
-<html xmlns:o="urn:schemas-microsoft-com:office:office"
-      xmlns:x="urn:schemas-microsoft-com:office:excel"
-      xmlns="http://www.w3.org/TR/REC-html40">
-<head>
-<meta charset="utf-8">
-<title>tblDisparos</title>
-<!--[if gte mso 9]><xml>
-  <x:ExcelWorkbook>
-    <x:ExcelWorksheets>
-      <x:ExcelWorksheet>
-        <x:Name>tblDisparos</x:Name>
-        <x:WorksheetOptions>
-          <x:Selected/>
-          <x:ProtectObjects>False</x:ProtectObjects>
-          <x:ProtectScenarios>False</x:ProtectScenarios>
-          <x:Panes/>
-        </x:WorksheetOptions>
-      </x:ExcelWorksheet>
-    </x:ExcelWorksheets>
-  </x:ExcelWorkbook>
-</xml><![endif]-->
-<style>
-  table{border-collapse:collapse;font-family:Segoe UI,Arial,sans-serif;font-size:11pt}
-  th,td{border:1px solid #d1d5db;padding:6px;vertical-align:top}
-  thead th{background:#f3f4f6}
-  .richmsg p{margin:.5em 0}
-  .richmsg img{max-width:520px;height:auto;border:1px solid #e5e7eb;border-radius:6px}
-  tbody tr:nth-child(even){background:#fafafa}
-</style>
-</head>
-<body>
-  <table id="tblDisparos" name="tblDisparos" x:str>
-    <thead>
-      <tr><th>Prefixo</th><th>Contato (e-mail)</th><th>Mensagem</th></tr>
-    </thead>
-    <tbody>
-      ${rowsHTML}
-    </tbody>
-  </table>
-
-  <!--[if gte mso 9]><xml>
-    <x:WorksheetOptions>
-      <x:AutoFilter x:Range="R1C1:R1C3"/>
-    </x:WorksheetOptions>
-  </xml><![endif]-->
-</body>
-</html>`;
-  return htmlDoc;
-}
-
-function escapeHTML(s){
-  return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
 
 async function exportExcel(){
   if(!document.querySelector('#output .msg')){
     await regenerateOutput();
   }
-  const html = buildExcelHTMLFromOutput();
-  if(!html){ alert('Não há mensagens para exportar. Gere as mensagens primeiro.'); return; }
-  const blob = new Blob([html], {type:'application/vnd.ms-excel;charset=utf-8;'});
-  saveAs(blob, 'tblDisparos.xls');
+  const data = collectRowsForExport();
+  if(!data.length){ alert('Não há mensagens para exportar. Gere as mensagens primeiro.'); return; }
+
+  const zip = new JSZip();
+
+  // --------- [Content_Types].xml ---------
+  zip.file('[Content_Types].xml',
+`<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+  <Override PartName="/xl/tables/table1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>
+</Types>`);
+
+  // --------- _rels/.rels ---------
+  zip.folder('_rels').file('.rels',
+`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`);
+
+  // --------- docProps ---------
+  zip.folder('docProps').file('core.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <dc:title>tblDisparos</dc:title>
+  <dc:creator>Disparador</dc:creator>
+</cp:coreProperties>`);
+  zip.folder('docProps').file('app.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
+  <Application>Disparador</Application>
+</Properties>`);
+
+  // --------- xl/workbook.xml ---------
+  zip.folder('xl').file('workbook.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+          xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets>
+    <sheet name="tblDisparos" sheetId="1" r:id="rId1"/>
+  </sheets>
+</workbook>`);
+
+  // --------- xl/_rels/workbook.xml.rels ---------
+  zip.folder('xl/_rels').file('workbook.xml.rels',
+`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`);
+
+  // --------- xl/styles.xml (mínimo) ---------
+  zip.folder('xl').file('styles.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>
+  <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+  <borders count="1"><border/></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="1"><xf xfId="0" fontId="0" fillId="0" borderId="0" applyFont="1"/></cellXfs>
+</styleSheet>`);
+
+  // --------- xl/worksheets/sheet1.xml + relação para tabela ---------
+  const rowsCount = data.length + 1; // + header
+  const ref = `A1:C${rowsCount}`;
+
+  // Cabeçalho
+  let sheetRows = `<row r="1"><c r="A1" t="inlineStr"><is><t>Prefixo</t></is></c><c r="B1" t="inlineStr"><is><t>Contato (e-mail)</t></is></c><c r="C1" t="inlineStr"><is><t>Mensagem</t></is></c></row>`;
+  // Dados (inlineStr para preservar HTML e base64)
+  data.forEach((r, idx) => {
+    const rr = idx + 2;
+    sheetRows += `<row r="${rr}">` +
+      `<c r="A${rr}" t="inlineStr"><is><t>${xmlEscape(r.prefixo)}</t></is></c>` +
+      `<c r="B${rr}" t="inlineStr"><is><t>${xmlEscape(r.email)}</t></is></c>` +
+      `<c r="C${rr}" t="inlineStr"><is><t>${xmlEscape(r.msgHTML)}</t></is></c>` +
+    `</row>`;
+  });
+
+  zip.folder('xl/worksheets').file('sheet1.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <dimension ref="${ref}"/>
+  <sheetViews><sheetView workbookViewId="0"/></sheetViews>
+  <sheetFormatPr defaultRowHeight="15"/>
+  <cols>
+    <col min="1" max="1" width="18" customWidth="1"/>
+    <col min="2" max="2" width="28" customWidth="1"/>
+    <col min="3" max="3" width="80" customWidth="1"/>
+  </cols>
+  <sheetData>
+    ${sheetRows}
+  </sheetData>
+  <autoFilter ref="${ref}"/>
+  <tableParts count="1"><tablePart r:id="rIdTbl1"/></tableParts>
+</worksheet>`);
+
+  // Relação da planilha com a tabela
+  zip.folder('xl/worksheets/_rels').file('sheet1.xml.rels',
+`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rIdTbl1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table1.xml"/>
+</Relationships>`);
+
+  // --------- xl/tables/table1.xml (Tabela oficial Ctrl+T) ---------
+  // Colunas da tabela
+  const tableCols =
+`<tableColumns count="3">
+  <tableColumn id="1" name="Prefixo"/>
+  <tableColumn id="2" name="Contato (e-mail)"/>
+  <tableColumn id="3" name="Mensagem"/>
+</tableColumns>`;
+
+  zip.folder('xl/tables').file('table1.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
+<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="tblDisparos" displayName="tblDisparos" ref="${ref}" headerRowCount="1">
+  ${tableCols}
+  <autoFilter ref="${ref}"/>
+  <tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>
+</table>`);
+
+  const blob = await zip.generateAsync({type:'blob'});
+  saveAs(blob, 'tblDisparos.xlsx');
 }
 el('#exportExcel').addEventListener('click', exportExcel);
+
+/* Cópia rica (permanece igual) */
+function copyHTMLViaHiddenEditable(html){
+  return new Promise((resolve,reject)=>{
+    const div = document.createElement('div');
+    div.contentEditable = 'true';
+    div.style.position = 'fixed';
+    div.style.left = '-99999px';
+    div.style.top = '0';
+    div.style.opacity = '0';
+    div.innerHTML = html;
+    document.body.appendChild(div);
+
+    const range = document.createRange();
+    range.selectNodeContents(div);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    const ok = document.execCommand('copy');
+    sel.removeAllRanges();
+    div.remove();
+    ok ? resolve() : reject(new Error('execCommand falhou'));
+  });
+}
+async function copyMessage(htmlMsg, textMsg, imgBlob){
+  if (navigator.clipboard && window.ClipboardItem){
+    try{
+      const itemData = { 'text/html': new Blob([htmlMsg], {type:'text/html'}), 'text/plain': new Blob([textMsg], {type:'text/plain'}) };
+      if(imgBlob){ itemData['image/png'] = imgBlob; }
+      await navigator.clipboard.write([ new ClipboardItem(itemData) ]);
+      return 'html';
+    }catch(e){}
+  }
+  try{
+    await copyHTMLViaHiddenEditable(htmlMsg);
+    return 'html';
+  }catch(e){
+    try{
+      await navigator.clipboard.writeText(textMsg);
+      return 'text';
+    }catch{
+      const ta=document.createElement('textarea'); ta.value=textMsg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      return 'text';
+    }
+  }
+}
 
 /* Garante prévia já na carga */
 document.addEventListener('DOMContentLoaded', updatePreview);
