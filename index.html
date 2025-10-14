@@ -157,9 +157,7 @@ prefixo nome email
       <div class="helper" style="margin-top:6px">Pré-visualização (rolagem horizontal):</div>
       <div id="sheetPreview" class="ghost-table" style="display:none"></div>
 
-      <div class="toolbar" style="margin-top:8px">
-        <button class="btn" id="downloadZip" disabled>Baixar prints (ZIP)</button>
-      </div>
+      <!-- Botão de ZIP removido como solicitado -->
       <div class="helper">Associação por: <b>prefixo</b> OU <b>dependência/nome da dependência</b> OU <b>nome</b> igual ao nome do contato.</div>
     </section>
 
@@ -244,7 +242,7 @@ function extractFromEditable(container){
     return { headers, rowsAoA };
   }
   const txt = container.innerText || '';
-  const lines = txt split(/\r?\n/).filter(l=>l.trim().length);
+  const lines = txt.split(/\r?\n/).filter(l=>l.trim().length); /* <-- corrigido .split */
   if(!lines.length) return {headers:[], rowsAoA:[]};
   const sep = detectDelimiter(txt);
   const aoa = lines.map(l=>l.split(sep));
@@ -358,24 +356,74 @@ async function buildPrintForContact(idx){
   const titulo = el('#sheetTitle').value.trim() || 'Planilha';
   const rows = groupedRowsByContact.get(idx) || [];
   if(!headers.length || !rows.length) return null;
-  const padX=14,padY=10,gapTitle=10,rowH=28,headerH=30,border=1;
-  const font='12px Segoe UI, Roboto, Arial, sans-serif', fontBold='600 12px Segoe UI, Roboto, Arial, sans-serif', titleFont='600 16px Segoe UI, Roboto, Arial, sans-serif';
-  const tmp=document.createElement('canvas'); const ctx=tmp.getContext('2d'); ctx.font=font;
-  const colW = headers.map(h=>{ let w=ctx.measureText(h).width+20; rows.forEach(r=>{ w=Math.max(w, ctx.measureText(String(r[h]??'')).width+20); }); return Math.min(Math.max(80,Math.ceil(w)),360); });
-  const tableW=colW.reduce((a,b)=>a+b,0)+border*(headers.length+1);
-  const tableH=headerH+rows.length*rowH+border*(rows.length+1);
-  const titleH=24, totalW=Math.ceil(padX*2+tableW), totalH=Math.ceil(padY*2+titleH+gapTitle+tableH);
-  tmp.width=totalW; tmp.height=totalH; ctx.fillStyle='#fff'; ctx.fillRect(0,0,totalW,totalH);
-  ctx.font=titleFont; ctx.fillStyle='#0f172a'; ctx.fillText(titulo, padX, padY+18);
-  let x=padX, y=padY+titleH+gapTitle; ctx.font=font; ctx.fillStyle='#f8fafc'; ctx.fillRect(x,y,tableW,headerH); ctx.strokeStyle='#e5e7eb'; ctx.lineWidth=border;
-  for(let i=0;i<=rows.length+1;i++){ const yy=y+i*rowH+(i===0?0:headerH-rowH); ctx.beginPath(); ctx.moveTo(x,yy); ctx.lineTo(x+tableW,yy); ctx.stroke(); }
-  let cx=x; for(let c=0;c<=headers.length;c++){ ctx.beginPath(); ctx.moveTo(cx,y); ctx.lineTo(cx,y+headerH+rows.length*rowH); ctx.stroke(); cx+=colW[c]||0; }
-  ctx.fillStyle='#111827'; ctx.font=fontBold; let tx=x+border; headers.forEach((h,i)=>{ ctx.fillText(String(h), tx+8, y+20); tx+=colW[i]; });
-  ctx.font=font; ctx.fillStyle='#111827'; let ry=y+headerH+20; rows.forEach(r=>{ let rx=x+border+8; headers.forEach((h,i)=>{ ctx.fillText(String(r[h]??''), rx, ry); rx+=colW[i]; }); ry+=rowH; });
-  const targetW=Math.min(520,totalW), scale=targetW/totalW, targetH=Math.round(totalH*scale);
-  const small=document.createElement('canvas'); small.width=targetW; small.height=targetH;
-  const c2=small.getContext('2d'); c2.imageSmoothingEnabled=true; c2.imageSmoothingQuality='high'; c2.drawImage(tmp,0,0,targetW,targetH);
-  const dataUrl=small.toDataURL('image/png'); return new Promise(resolve=>{ small.toBlob(blob=>{ if(!blob) return resolve(null); resolve({blob,dataUrl}); },'image/png',0.95); });
+
+  const padX = 14, padY = 10, gapTitle = 10, rowH = 28, headerH = 30, border = 1;
+  const font = '12px Segoe UI, Roboto, Arial, sans-serif';
+  const fontBold = '600 12px Segoe UI, Roboto, Arial, sans-serif';
+  const titleFont = '600 16px Segoe UI, Roboto, Arial, sans-serif';
+
+  const tmp = document.createElement('canvas');
+  const ctx = tmp.getContext('2d');
+  ctx.font = font;
+  const colW = headers.map(h=>{
+    let w = ctx.measureText(h).width + 20;
+    rows.forEach(r=>{ w = Math.max(w, ctx.measureText(String(r[h]??'')).width + 20); });
+    return Math.min(Math.max(80, Math.ceil(w)), 360);
+  });
+  const tableW = colW.reduce((a,b)=>a+b,0) + border*(headers.length+1);
+  const tableH = headerH + rows.length*rowH + border*(rows.length+1);
+  const titleH = 24;
+  const totalW = Math.ceil(padX*2 + tableW);
+  const totalH = Math.ceil(padY*2 + titleH + gapTitle + tableH);
+
+  tmp.width = totalW; tmp.height = totalH;
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,totalW,totalH);
+  ctx.font = titleFont; ctx.fillStyle = '#0f172a';
+  ctx.fillText(titulo, padX, padY + 18);
+
+  let x = padX, y = padY + titleH + gapTitle;
+  ctx.font = font;
+  ctx.fillStyle = '#f8fafc'; ctx.fillRect(x, y, tableW, headerH);
+  ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = border;
+
+  for(let i=0;i<=rows.length+1;i++){
+    const yy = y + i*rowH + (i===0?0:headerH-rowH);
+    ctx.beginPath(); ctx.moveTo(x, yy); ctx.lineTo(x+tableW, yy); ctx.stroke();
+  }
+  let cx = x;
+  for(let c=0;c<=headers.length;c++){
+    ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, y + headerH + rows.length*rowH); ctx.stroke();
+    cx += colW[c]||0;
+  }
+  ctx.fillStyle = '#111827'; ctx.font = fontBold;
+  let tx = x + border;
+  headers.forEach((h,i)=>{ ctx.fillText(String(h), tx + 8, y + 20); tx += colW[i]; });
+  ctx.font = font; ctx.fillStyle = '#111827';
+  let ry = y + headerH + 20;
+  rows.forEach(r=>{
+    let rx = x + border + 8;
+    headers.forEach((h,i)=>{ ctx.fillText(String(r[h]??''), rx, ry); rx += colW[i]; });
+    ry += rowH;
+  });
+
+  const targetW = Math.min(520, totalW);
+  const scale = targetW / totalW;
+  const targetH = Math.round(totalH * scale);
+
+  const small = document.createElement('canvas');
+  small.width = targetW; small.height = targetH;
+  const c2 = small.getContext('2d');
+  c2.imageSmoothingEnabled = true;
+  c2.imageSmoothingQuality = 'high';
+  c2.drawImage(tmp, 0, 0, targetW, targetH);
+
+  const dataUrl = small.toDataURL('image/png');
+  return new Promise(resolve=>{
+    small.toBlob(blob=>{
+      if(!blob) return resolve(null);
+      resolve({ blob, dataUrl });
+    }, 'image/png', 0.95);
+  });
 }
 
 /* ---------------- Mensagem com imagem ---------------- */
@@ -386,7 +434,11 @@ function buildMessageHTML(contact, dataUrl, bodyHTMLClean){
   const imgHTML = dataUrl ? `<div class="separator"></div><div class="imgwrap"><img src="${dataUrl}" alt="print da planilha"></div>` : '';
   return `<div class="richmsg">${intro}${content}${imgHTML}</div>`;
 }
-function htmlToPlainText(html){ const tmp=document.createElement('div'); tmp.innerHTML=html; return (tmp.textContent||tmp.innerText||'').trim(); }
+function htmlToPlainText(html){
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  return (tmp.textContent || tmp.innerText || '').trim();
+}
 function buildMessagePlainText(contact, bodyHTMLClean){
   const nome = firstName(contact?.nome);
   const bodyTxt = htmlToPlainText(bodyHTMLClean || '');
@@ -513,19 +565,7 @@ el('#generateMsgs').addEventListener('click', async ()=>{
   await regenerateOutput();
 });
 
-/* ZIP com todos os PRINTS */
-el('#downloadZip').addEventListener('click', async ()=>{
-  const selIdx = contacts.map((c,i)=> c.selected ? i : -1).filter(i=>i>=0);
-  if(!selIdx.length){ alert('Nenhum contato selecionado.'); return; }
-  const zip = new JSZip(); let added=0;
-  for(const idx of selIdx){
-    if(!imageCacheByContact.get(idx)){ const img = await buildPrintForContact(idx); imageCacheByContact.set(idx, img); }
-    const c = contacts[idx]; const img = imageCacheByContact.get(idx);
-    if(img?.blob){ zip.file(`${String(c.prefixo||'print')} - ${titleCaseName(c.nome)}.png`, img.blob); added++; }
-  }
-  if(!added){ alert('Nenhum print disponível.'); return; }
-  const blob = await zip.generateAsync({type:'blob'}); saveAs(blob, 'prints_por_contato.zip');
-});
+/* (REMOVIDO) ZIP com todos os PRINTS — conforme solicitado */
 
 /* ---------------- Prévia dinâmica ---------------- */
 function updatePreviewOnChange(){ updatePreview(); }
@@ -554,7 +594,7 @@ async function doFullRefresh(){
       imageCacheByContact.clear();
       el('#attachStats').textContent = `Planilha colada: ${rowsAll.length} linha(s) • ${headers.length} coluna(s)`;
       el('#clearAttach').disabled = rowsAll.length===0;
-      el('#downloadZip').disabled = rowsAll.length===0;
+      /* linha de controle do ZIP removida */
     }
   }catch(e){}
 
@@ -595,7 +635,10 @@ async function exportExcel(){
   if(!data.length){ alert('Não há mensagens para exportar. Gere as mensagens primeiro.'); return; }
 
   const zip = new JSZip();
-  zip.file('[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8"?>
+
+  // --------- [Content_Types].xml ---------
+  zip.file('[Content_Types].xml',
+`<?xml version="1.0" encoding="UTF-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
   <Default Extension="xml" ContentType="application/xml"/>
@@ -606,32 +649,48 @@ async function exportExcel(){
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
   <Override PartName="/xl/tables/table1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>
 </Types>`);
-  zip.folder('_rels').file('.rels',`<?xml version="1.0" encoding="UTF-8"?>
+
+  // --------- _rels/.rels ---------
+  zip.folder('_rels').file('.rels',
+`<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
 </Relationships>`);
-  zip.folder('docProps').file('core.xml',`<?xml version="1.0" encoding="UTF-8"?>
+
+  // --------- docProps ---------
+  zip.folder('docProps').file('core.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
 <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/">
   <dc:title>tblDisparos</dc:title>
   <dc:creator>Disparador</dc:creator>
 </cp:coreProperties>`);
-  zip.folder('docProps').file('app.xml',`<?xml version="1.0" encoding="UTF-8"?>
+  zip.folder('docProps').file('app.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
 <Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
   <Application>Disparador</Application>
 </Properties>`);
-  zip.folder('xl').file('workbook.xml',`<?xml version="1.0" encoding="UTF-8"?>
+
+  // --------- xl/workbook.xml ---------
+  zip.folder('xl').file('workbook.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
           xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <sheets>
     <sheet name="tblDisparos" sheetId="1" r:id="rId1"/>
   </sheets>
 </workbook>`);
-  zip.folder('xl/_rels').file('workbook.xml.rels',`<?xml version="1.0" encoding="UTF-8"?>
+
+  // --------- xl/_rels/workbook.xml.rels ---------
+  zip.folder('xl/_rels').file('workbook.xml.rels',
+`<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
 </Relationships>`);
-  zip.folder('xl').file('styles.xml',`<?xml version="1.0" encoding="UTF-8"?>
+
+  // --------- xl/styles.xml (mínimo) ---------
+  zip.folder('xl').file('styles.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
   <fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>
   <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
@@ -639,21 +698,16 @@ async function exportExcel(){
   <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
   <cellXfs count="1"><xf xfId="0" fontId="0" fillId="0" borderId="0" applyFont="1"/></cellXfs>
 </styleSheet>`);
-  function xmlEscape(s){
-    return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
-  }
-  const cards = Array.from(document.querySelectorAll('#output .msg'));
-  const data = cards.map(card=>{
-    const badges = card.querySelectorAll('.badge');
-    const email = badges[0]?.textContent || '';
-    const prefixo= (badges[1]?.textContent || '').replace(/^Prefixo:\s*/,'');
-    const msgHTML= card.querySelector('[data-htmlmsg]')?.innerHTML || '';
-    return {prefixo, email, msgHTML: `<div class="richmsg">${msgHTML}</div>`};
-  });
-  const rowsCount = data.length + 1;
+
+  // --------- xl/worksheets/sheet1.xml + relação para tabela ---------
+  const rows = collectRowsForExport(); // já temos os dados
+  const rowsCount = rows.length + 1; // + header
   const ref = `A1:C${rowsCount}`;
+
+  // Cabeçalho
   let sheetRows = `<row r="1"><c r="A1" t="inlineStr"><is><t>Prefixo</t></is></c><c r="B1" t="inlineStr"><is><t>Contato (e-mail)</t></is></c><c r="C1" t="inlineStr"><is><t>Mensagem</t></is></c></row>`;
-  data.forEach((r, idx) => {
+  // Dados (inlineStr para preservar HTML e base64)
+  rows.forEach((r, idx) => {
     const rr = idx + 2;
     sheetRows += `<row r="${rr}">` +
       `<c r="A${rr}" t="inlineStr"><is><t>${xmlEscape(r.prefixo)}</t></is></c>` +
@@ -661,7 +715,9 @@ async function exportExcel(){
       `<c r="C${rr}" t="inlineStr"><is><t>${xmlEscape(r.msgHTML)}</t></is></c>` +
     `</row>`;
   });
-  zip.folder('xl/worksheets').file('sheet1.xml',`<?xml version="1.0" encoding="UTF-8"?>
+
+  zip.folder('xl/worksheets').file('sheet1.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <dimension ref="${ref}"/>
@@ -678,22 +734,30 @@ async function exportExcel(){
   <autoFilter ref="${ref}"/>
   <tableParts count="1"><tablePart r:id="rIdTbl1"/></tableParts>
 </worksheet>`);
-  zip.folder('xl/worksheets/_rels').file('sheet1.xml.rels',`<?xml version="1.0" encoding="UTF-8"?>
+
+  // Relação da planilha com a tabela
+  zip.folder('xl/worksheets/_rels').file('sheet1.xml.rels',
+`<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rIdTbl1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table1.xml"/>
 </Relationships>`);
+
+  // --------- xl/tables/table1.xml (Tabela oficial Ctrl+T) ---------
   const tableCols =
 `<tableColumns count="3">
   <tableColumn id="1" name="Prefixo"/>
   <tableColumn id="2" name="Contato (e-mail)"/>
   <tableColumn id="3" name="Mensagem"/>
 </tableColumns>`;
-  zip.folder('xl/tables').file('table1.xml',`<?xml version="1.0" encoding="UTF-8"?>
+
+  zip.folder('xl/tables').file('table1.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
 <table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="tblDisparos" displayName="tblDisparos" ref="${ref}" headerRowCount="1">
   ${tableCols}
   <autoFilter ref="${ref}"/>
   <tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>
 </table>`);
+
   const blob = await zip.generateAsync({type:'blob'});
   saveAs(blob, 'tblDisparos.xlsx');
 }
@@ -702,23 +766,48 @@ el('#exportExcel').addEventListener('click', exportExcel);
 /* Cópia rica (permanece igual) */
 function copyHTMLViaHiddenEditable(html){
   return new Promise((resolve,reject)=>{
-    const div=document.createElement('div'); div.contentEditable='true'; div.style.position='fixed'; div.style.left='-99999px'; div.style.top='0'; div.style.opacity='0'; div.innerHTML=html; document.body.appendChild(div);
-    const range=document.createRange(); range.selectNodeContents(div);
-    const sel=window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-    const ok=document.execCommand('copy'); sel.removeAllRanges(); div.remove(); ok?resolve():reject(new Error('execCommand falhou'));
+    const div = document.createElement('div');
+    div.contentEditable = 'true';
+    div.style.position = 'fixed';
+    div.style.left = '-99999px';
+    div.style.top = '0';
+    div.style.opacity = '0';
+    div.innerHTML = html;
+    document.body.appendChild(div);
+
+    const range = document.createRange();
+    range.selectNodeContents(div);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+
+    const ok = document.execCommand('copy');
+    sel.removeAllRanges();
+    div.remove();
+    ok ? resolve() : reject(new Error('execCommand falhou'));
   });
 }
 async function copyMessage(htmlMsg, textMsg, imgBlob){
-  if(navigator.clipboard && window.ClipboardItem){
+  if (navigator.clipboard && window.ClipboardItem){
     try{
-      const itemData={'text/html':new Blob([htmlMsg],{type:'text/html'}),'text/plain':new Blob([textMsg],{type:'text/plain'})};
-      if(imgBlob){ itemData['image/png']=imgBlob; }
-      await navigator.clipboard.write([new ClipboardItem(itemData)]); return 'html';
+      const itemData = { 'text/html': new Blob([htmlMsg], {type:'text/html'}), 'text/plain': new Blob([textMsg], {type:'text/plain'}) };
+      if(imgBlob){ itemData['image/png'] = imgBlob; }
+      await navigator.clipboard.write([ new ClipboardItem(itemData) ]);
+      return 'html';
     }catch(e){}
   }
-  try{ await copyHTMLViaHiddenEditable(htmlMsg); return 'html'; }
-  catch(e){ try{ await navigator.clipboard.writeText(textMsg); return 'text'; }
-    catch{ const ta=document.createElement('textarea'); ta.value=textMsg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); return 'text'; } }
+  try{
+    await copyHTMLViaHiddenEditable(htmlMsg);
+    return 'html';
+  }catch(e){
+    try{
+      await navigator.clipboard.writeText(textMsg);
+      return 'text';
+    }catch{
+      const ta=document.createElement('textarea'); ta.value=textMsg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      return 'text';
+    }
+  }
 }
 
 /* Garante prévia já na carga */
