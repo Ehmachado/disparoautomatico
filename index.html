@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Disparador — Print compacto com cópia automática</title>
 
-<!-- Dependências -->
+<!-- Dependências (mantidas; não quebram nada mesmo sem exportar) -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
@@ -62,7 +62,6 @@
   .msg__toggle{margin-left:auto; font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; cursor:pointer}
   .msg.collapsed{background:#f8fafc}
   .msg.collapsed .msg__body{display:none}
-  /* área de logs */
   #logs{margin-top:8px;font-size:12px}
 </style>
 </head>
@@ -80,7 +79,7 @@
     <!-- 1) Contatos -->
     <section class="card">
       <h2>1) Contatos</h2>
-      <div class="helper">Cole tabela com cabeçalhos <b>prefixo</b>, <b>nome</b>, <b>email</b> (TAB/CSV). Você pode manter estes contatos salvos no navegador.</div>
+      <div class="helper">Cole tabela com cabeçalhos (flexível): <b>prefixo/pref/agência</b>, <b>nome</b>, <b>email/e-mail/mail/contato</b>. Preferência explícita pela coluna <b>“nome”</b> para o nome da pessoa.</div>
       <textarea id="contactsInput" placeholder="Exemplo:
 prefixo nome email
 123 Maria Clara Souza maria@empresa.com
@@ -115,7 +114,16 @@ prefixo nome email
     <!-- 2) Mensagem + PRÉVIA -->
     <section class="card">
       <h2>2) Mensagem</h2>
-      <div class="helper">Abertura fixa: <b>“Olá &lt;Primeiro Nome&gt;, tudo bem?”</b>. Escreva somente o restante.</div>
+      <div class="helper">
+        Personalize a saudação usando <b>{nome}</b> para o primeiro nome.<br>
+        Ex.: <code>Olá {nome}, tudo bem?</code>
+      </div>
+
+      <!-- Saudação personalizada -->
+      <div class="row" style="margin:8px 0">
+        <input id="greetingInput" type="text" placeholder="Saudação (use {nome}) — ex.: Olá {nome}, tudo bem?" />
+        <button class="btn ghost" id="saveGreeting" title="Salvar saudação no navegador">Salvar saudação</button>
+      </div>
 
       <div class="rte-bar">
         <button class="rte-btn" data-cmd="bold" title="Negrito (Ctrl+B)">B</button>
@@ -124,7 +132,7 @@ prefixo nome email
         <button class="btn ghost right" id="refreshMsg">Atualizar</button>
       </div>
 
-      <div id="messageBody" contenteditable="true" data-placeholder="Escreva aqui o texto após a saudação automática. Use os botões para negrito/itálico/sublinhado."></div>
+      <div id="messageBody" contenteditable="true" data-placeholder="Escreva aqui o texto após a saudação. Use os botões para negrito/itálico/sublinhado."></div>
 
       <div class="helper">A imagem (print) inclui o <b>título</b>, o <b>cabeçalho</b> e as <b>linhas do contato</b>.</div>
       <div style="margin-top:8px">
@@ -145,7 +153,7 @@ prefixo nome email
       <h2>3) Planilha — cole aqui (Ctrl+V)</h2>
       <div class="helper">Cole direto do Excel/Sheets. Informe um <b>Título da planilha</b> para ir no print.</div>
       <input id="sheetTitle" type="text" placeholder="Título da planilha (ex.: Relatório por Prefixo)" />
-      <div id="sheetPaste" class="sheet-paste" contenteditable="true" spellcheck="false" placeholder="Cole aqui…"></div>
+      <div id="sheetPaste" class="sheet-paste" contenteditable="true" spellcheck="false"></div>
       <div class="row" style="margin-top:8px">
         <label>Linha do cabeçalho:</label>
         <input id="headerRow" type="text" placeholder="1 (padrão)" style="width:120px">
@@ -160,7 +168,7 @@ prefixo nome email
       <div id="sheetPreview" class="ghost-table" style="display:none"></div>
 
       <div class="toolbar" style="margin-top:8px">
-        <button class="btn" id="downloadZip" disabled>Baixar prints (ZIP)</button>
+        <button class="btn" id="downloadZip" disabled>Abrir chat no Teams (teste)</button>
       </div>
       <div class="helper">Associação por: <b>prefixo</b> OU <b>dependência</b> OU <b>nome</b> igual ao nome do contato.</div>
     </section>
@@ -176,10 +184,9 @@ prefixo nome email
             <option value="nome_az">Nome (A→Z)</option>
           </select>
           <button class="btn ghost" id="refreshAll">Atualizar</button>
-          <button class="btn dark" id="exportForFlow">Exportar p/ Fluxo (XLSX — Tabela)</button>
         </div>
       </div>
-      <div class="helper">“Copiar mensagem” envia HTML com a imagem + PNG no clipboard (quando suportado). Se não suportar, cai para cópia rica; por último, texto.</div>
+      <div class="helper">“Copiar mensagem” copia HTML com imagem (quando suportado). Abra o chat e cole (Ctrl+V).</div>
       <div id="output" class="list"></div>
     </section>
   </div>
@@ -187,14 +194,11 @@ prefixo nome email
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  /* ===== Logs/erros na UI ===== */
+  /* ===== Logs/erros ===== */
   const logBox = document.getElementById('logs');
-  function log(msg){ if(logBox){ logBox.innerHTML = '<span class="ok">OK:</span> ' + msg; } }
-  function logErr(msg){ if(logBox){ logBox.innerHTML = '<div class="err"><b>Erro:</b> ' + msg + '</div>'; } }
-
-  window.addEventListener('error', (e)=>{
-    logErr((e && e.message) ? e.message : 'Erro de script');
-  });
+  const log = (m)=>{ if(logBox) logBox.innerHTML = '<span class="ok">OK:</span> ' + m; };
+  const logErr = (m)=>{ if(logBox) logBox.innerHTML = '<div class="err"><b>Erro:</b> ' + m + '</div>'; };
+  window.addEventListener('error', e=> logErr(e?.message || 'Erro de script'));
 
   /* ===== Estado ===== */
   let contacts = [];
@@ -204,93 +208,116 @@ document.addEventListener('DOMContentLoaded', () => {
   const groupedRowsByContact = new Map();
   const imageCacheByContact = new Map();
 
-  const el = s => document.querySelector(s);
+  const el = (s)=>document.querySelector(s);
   const normalizeKey = s => String(s||'').trim().toLowerCase();
+  const stripAccents = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const equalsLoose = (a,b)=> stripAccents(a).trim().toLowerCase() === stripAccents(b).trim().toLowerCase();
   const debounce = (fn,ms=250)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms)} };
 
-  /* ===== Utils ===== */
-  function titleCaseName(name){ if(!name) return "Fulano"; return String(name).toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase()); }
-  function firstName(name){
-    if(!name) return "Fulano";
-    const cleaned = String(name).trim().replace(/^(sr\.?|sra\.?|sr\(a\)\.?|dr\.?|dra\.?|prof\.?|profa\.?|mr\.?|mrs\.?|ms\.?)\s+/i, "");
-    const first = cleaned.split(/\s+/)[0] || "Fulano";
-    return first.toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase());
+  /* ===== Saudação personalizada ===== */
+  const DEFAULT_GREETING = 'Olá {nome}, tudo bem?';
+  const greetingInput = el('#greetingInput');
+  const saveGreetingBtn = el('#saveGreeting');
+
+  function loadGreeting(){
+    const saved = localStorage.getItem('customGreeting');
+    greetingInput.value = saved && saved.trim() ? saved : DEFAULT_GREETING;
   }
-  function toCSVRows(rows, hdrs){
-    if(!rows?.length) return "";
-    const cols = hdrs?.length ? hdrs : Object.keys(rows[0]);
-    const esc=v=>{const s=v==null?"":String(v); return /[",\n,;]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
-    const out=[cols.join(",")];
-    for(const r of rows){ out.push(cols.map(c=>esc(r[c]??'')).join(",")); }
-    return out.join("\n");
+  function saveGreeting(){
+    const v = (greetingInput.value || '').trim() || DEFAULT_GREETING;
+    localStorage.setItem('customGreeting', v);
+    log('Saudação salva.');
+    updatePreview();
   }
-  function downloadBlob(name, blob){
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
-    document.body.appendChild(a); a.click();
-    setTimeout(()=>{URL.revokeObjectURL(a.href); a.remove()},400);
+  function makeGreeting(contact){
+    const tpl = (greetingInput.value || DEFAULT_GREETING);
+    const nome = firstName(contact?.nome);
+    return tpl
+      .replace(/\{nome\}/gi, nome)
+      .replace(/<\s*primeiro\s+nome\s*>/gi, nome);
   }
-  function showError(msg, detail){
-    const box = el('#errorBox');
-    if(box) box.innerHTML = `<div class="err"><strong>Erro:</strong> ${msg}${detail?`<br><small>${detail}</small>`:''}</div>`;
-  }
-  function showOk(msg){
-    const box = el('#errorBox');
-    if(box) box.innerHTML = `<div class="ok">${msg}</div>`;
-  }
-  function stripAccents(s){ return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
-  function equalsLoose(a,b){ return stripAccents(a).trim().toLowerCase() === stripAccents(b).trim().toLowerCase(); }
+  loadGreeting();
+  saveGreetingBtn.addEventListener('click', saveGreeting);
+  greetingInput.addEventListener('input', debounce(()=>updatePreview(),120));
+
+  /* ===== Delimitadores robustos ===== */
   function detectDelimiter(text){
-    const sample = text.split(/\r?\n/).slice(0,5).join('\n');
-    const c = ch => (sample.match(new RegExp('\\' + ch, 'g'))||[]).length;
-    const score=[{d:'\t',n:c('\t')},{d:';',n:c(';')},{d:',',n:c(',')}].sort((a,b)=>b.n-a.n);
-    return score[0].n>0?score[0].d:'\t';
+    const sample = text.split(/\r?\n/).slice(0,8).join('\n');
+    const count = ch => (sample.match(new RegExp('\\' + ch, 'g'))||[]).length;
+    const scores = [
+      {d:'\t', n:count('\t')},
+      {d:';', n:count(';')},
+      {d:',', n:count(',')}
+    ].sort((a,b)=>b.n-a.n);
+    if (scores[0].n>0) return scores[0].d;
+    return / {2,}/.test(sample) ? ' +' : '\t';
+  }
+  function splitFlexible(line, sep){
+    if (sep === ' +') { return line.trim().split(/ {2,}/); }
+    return line.split(sep);
   }
 
-  /* ===== Campo 3: área de colagem ===== */
+  /* ===== Campo 3: colagem/preview ===== */
   const sheetPaste = el('#sheetPaste');
-  sheetPaste.addEventListener('paste', ()=>{ setTimeout(refreshPreviewFromEditable, 0); });
-  sheetPaste.addEventListener('keyup', debounce(()=>{ refreshPreviewFromEditable(); }, 200));
+  const sheetPreview = el('#sheetPreview');
+  sheetPaste.addEventListener('paste', ()=>{ setTimeout(refreshPreviewFromEditable,0); });
+  sheetPaste.addEventListener('keyup', debounce(refreshPreviewFromEditable, 200));
 
-  function refreshPreviewFromEditable(){
-    const { headers: h, rowsAoA } = extractFromEditable(sheetPaste);
-    const cont = el('#sheetPreview');
-    if(!cont) return;
-    if(h.length === 0 || rowsAoA.length === 0){
-      cont.style.display='none'; cont.innerHTML='';
-      return;
+  function tableFromAoA(aoa){
+    const tbl=document.createElement('table');
+    const thead=document.createElement('thead');
+    const tbody=document.createElement('tbody');
+    if(aoa.length){
+      const trh=document.createElement('tr');
+      aoa[0].forEach(c=>{ const th=document.createElement('th'); th.textContent=String(c||''); trh.appendChild(th); });
+      thead.appendChild(trh);
+      aoa.slice(1).forEach(r=>{
+        const tr=document.createElement('tr');
+        aoa[0].forEach((_,i)=>{ const td=document.createElement('td'); td.textContent=String(r[i]??''); tr.appendChild(td); });
+        tbody.appendChild(tr);
+      });
     }
-    const tbl = document.createElement('table');
-    const thead = document.createElement('thead');
-    const trh = document.createElement('tr');
-    h.forEach(c=>{ const th=document.createElement('th'); th.textContent=c; trh.appendChild(th); });
-    thead.appendChild(trh);
-    const tbody = document.createElement('tbody');
-    rowsAoA.forEach(r=>{
-      const tr=document.createElement('tr');
-      h.forEach((_,i)=>{ const td=document.createElement('td'); td.textContent=(r[i]??''); tr.appendChild(td); });
-      tbody.appendChild(tr);
-    });
     tbl.appendChild(thead); tbl.appendChild(tbody);
-    cont.innerHTML=''; cont.appendChild(tbl); cont.style.display='block';
+    return tbl;
   }
 
   function extractFromEditable(container){
     const table = container.querySelector('table');
-    if(table){
+    if (table){
       const rows = Array.from(table.rows);
-      const aoa = rows.map(tr => Array.from(tr.cells).map(td => td.textContent.trim()));
-      const hdrs = (aoa[0]||[]).map(x=>x);
-      const rowsAoA = aoa.slice(1);
-      return { headers: hdrs, rowsAoA };
+      const aoa = rows.map(tr => Array.from(tr.cells).map(td => (td.innerText||'').trim()));
+      if (!aoa.length) return {headers:[], rowsAoA:[]};
+      return { headers: aoa[0], rowsAoA: aoa.slice(1) };
     }
     const txt = container.innerText || '';
     const lines = txt.split(/\r?\n/).filter(l=>l.trim().length);
-    if(!lines.length) return {headers:[], rowsAoA:[]};
+    if (!lines.length) return {headers:[], rowsAoA:[]};
     const sep = detectDelimiter(txt);
-    const aoa = lines.map(l=>l.split(sep));
-    const hdrs = (aoa[0]||[]).map(x=>x.trim());
-    const rowsAoA = aoa.slice(1).map(r=>r.map(x=>String(x??'').trim()));
-    return { headers: hdrs, rowsAoA };
+    const aoa = lines.map(l=> splitFlexible(l, sep).map(x=>String(x??'').trim()));
+    const maxCols = aoa.reduce((m,r)=>Math.max(m,r.length),0);
+    aoa.forEach(r=>{ while(r.length<maxCols) r.push(''); });
+    return { headers: aoa[0], rowsAoA: aoa.slice(1) };
+  }
+
+  function refreshPreviewFromEditable(){
+    const { headers: h, rowsAoA } = extractFromEditable(sheetPaste);
+    if (!h.length || !rowsAoA.length){
+      sheetPreview.style.display='none'; sheetPreview.innerHTML='';
+      return;
+    }
+    const aoa = [h, ...rowsAoA];
+    sheetPreview.innerHTML='';
+    sheetPreview.appendChild(tableFromAoA(aoa));
+    sheetPreview.style.display='block';
+  }
+
+  function showError(msg, detail){
+    const box = el('#errorBox');
+    if (box) box.innerHTML = `<div class="err"><strong>Erro:</strong> ${msg}${detail?`<br><small>${detail}</small>`:''}</div>`;
+  }
+  function showOk(msg){
+    const box = el('#errorBox');
+    if (box) box.innerHTML = `<div class="ok">${msg}</div>`;
   }
 
   el('#usePasted').addEventListener('click', ()=>{
@@ -298,21 +325,28 @@ document.addEventListener('DOMContentLoaded', () => {
       const { headers: h0, rowsAoA } = extractFromEditable(sheetPaste);
       if(!rowsAoA.length || !h0.length){ showError('Nada para processar. Cole a planilha e tente de novo.'); return; }
       const hdrRowInput = el('#headerRow').value.trim();
-      let hdrIdx = 0;
-      if(hdrRowInput){ const n = parseInt(hdrRowInput,10); if(Number.isInteger(n) && n>=1 && n<=rowsAoA.length+1){ hdrIdx = n-1; } }
       const aoaFull = [h0, ...rowsAoA];
+      let hdrIdx = 0;
+      if(hdrRowInput){
+        const n=parseInt(hdrRowInput,10);
+        if(Number.isInteger(n) && n>=1 && n<=aoaFull.length){ hdrIdx=n-1; }
+      }
       const headersRow = aoaFull[hdrIdx] || aoaFull[0];
       headers = headersRow.map(x=>String(x||'').trim());
-      const dataAoA = aoaFull.slice(hdrIdx+1).filter(r=>r.some(v=>String(v).trim()!==''));
+      const dataAoA = aoaFull.slice(hdrIdx+1).filter(r=> r.some(v=>String(v).trim()!==''));
       rowsAll = dataAoA.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o; });
+
       imageCacheByContact.clear();
       recountAndAutoselect();
       el('#attachStats').textContent = `Planilha colada: ${rowsAll.length} linha(s) • ${headers.length} coluna(s)`;
-      el('#clearAttach').disabled = false;
+      el('#clearAttach').disabled = rowsAll.length===0;
       el('#downloadZip').disabled = rowsAll.length===0;
       showOk('Dados aplicados com sucesso.');
       log('Planilha aplicada (Campo 3)');
-    }catch(err){ console.error(err); showError('Falha ao processar a planilha colada.', err?.message || String(err)); logErr(err?.message||String(err)); }
+      refreshPreviewFromEditable();
+    }catch(err){
+      console.error(err); showError('Falha ao processar a planilha colada.', err?.message || String(err)); logErr(err?.message||String(err));
+    }
   });
 
   el('#clearAttach').addEventListener('click', ()=>{
@@ -320,17 +354,27 @@ document.addEventListener('DOMContentLoaded', () => {
     contacts.forEach(c=> c.attachCount=0);
     el('#attachStats').textContent='Sem dados'; el('#errorBox').innerHTML='';
     el('#clearAttach').disabled = true; el('#downloadZip').disabled = true;
-    const prev = el('#sheetPreview'); if(prev){ prev.style.display='none'; prev.innerHTML=''; }
-    sheetPaste.innerHTML=''; renderContacts(); updatePreview();
+    if(sheetPreview){ sheetPreview.style.display='none'; sheetPreview.innerHTML=''; }
+    sheetPaste.innerHTML='';
+    renderContacts(); updatePreview();
     log('Planilha limpa');
   });
 
   /* ===== Associação Linhas x Contatos ===== */
   function recountAndAutoselect(){
     groupedRowsByContact.clear();
-    const depCols = headers.filter(h=>{ const k=normalizeKey(h); return k==='dependencia'||k==='dependência'||k==='nome dependencia'||k==='nome da dependencia'||k==='nome da dependência'||k.includes('depend'); });
-    const nameCols = headers.filter(h=> normalizeKey(h)==='nome' || normalizeKey(h).includes('nome') );
-    const prefixCols = headers.filter(h=> normalizeKey(h).includes('prefix'));
+    const depCols = headers.filter(h=>{
+      const k=normalizeKey(h);
+      return k==='dependencia'||k==='dependência'||k.includes('depend');
+    });
+    const nameCols = headers.filter(h=>{
+      const k = normalizeKey(h);
+      return k === 'nome' || k.includes('nome');
+    });
+    const prefixCols = headers.filter(h=>{
+      const k = normalizeKey(h);
+      return k.includes('prefix') || k.includes('agên') || k.includes('agen');
+    });
 
     contacts.forEach((c, idx)=>{
       const rowsMatch = [];
@@ -339,8 +383,8 @@ document.addEventListener('DOMContentLoaded', () => {
       for(const r of rowsAll){
         let matched = false;
         if(prefixCols.length){ for(const h of prefixCols){ if(equalsLoose(r[h]??'', px)){ matched = true; break; } } }
-        if(!matched && depCols.length){ for(const h of depCols){ if(equalsLoose(r[h], nomeContato)){ matched = true; break; } } }
-        if(!matched && nameCols.length){ for(const h of nameCols){ if(equalsLoose(r[h], nomeContato)){ matched = true; break; } } }
+        if(!matched && depCols.length){ for(const h of depCols){ if(equalsLoose(r[h]??'', nomeContato)){ matched = true; break; } } }
+        if(!matched && nameCols.length){ for(const h of nameCols){ if(equalsLoose(r[h]??'', nomeContato)){ matched = true; break; } } }
         if(matched) rowsMatch.push(r);
       }
       groupedRowsByContact.set(idx, rowsMatch);
@@ -350,20 +394,52 @@ document.addEventListener('DOMContentLoaded', () => {
     renderContacts(); updatePreview();
   }
 
-  /* ===== Campo 1: Contatos ===== */
+  /* ===== Campo 1: Contatos (preferir “nome” exato) ===== */
+  function guessColumns(headersRow, rows){
+    const hnorm = headersRow.map(h=> normalizeKey(stripAccents(h)));
+    let iNome = hnorm.findIndex(h=> h === 'nome');
+    if (iNome < 0) iNome = hnorm.findIndex(h=> h.includes('nome'));
+    let iPrefixo = hnorm.findIndex(h=> /^(prefixo|pref|prefix|agencia|agência)$/.test(h));
+    let iEmail = hnorm.findIndex(h=> /^(email|e-mail|mail|contato|contact)$/.test(h));
+    if(iEmail<0){
+      for(let c=0;c<(rows[0]?.length||0); c++){
+        if(rows.some(r=>/@/.test(String(r[c]||'')))){ iEmail=c; break; }
+      }
+    }
+    return {iPrefixo, iNome, iEmail};
+  }
+
   function parseContacts(raw){
     raw = (raw||"").trim(); if(!raw) return [];
     const sep = detectDelimiter(raw);
     const lines = raw.split(/\r?\n/).filter(l=>l.trim().length);
-    const headersC = (lines.shift()||"").split(sep).map(h=>normalizeKey(h));
-    const iPrefixo = headersC.findIndex(h=>/prefix/.test(h));
-    const iNome = headersC.findIndex(h=>/^nome$/.test(h));
-    const iEmail = headersC.findIndex(h=>/^email$/.test(h) || /^e-mail$/.test(h));
-    if(iPrefixo<0 || iNome<0 || iEmail<0){ alert('Cabeçalhos necessários (variações aceitas): prefixo/prefix/pref, nome, email.'); return []; }
+    const aoa = lines.map(l=> splitFlexible(l, sep).map(x=>String(x??'').trim()));
+    const maxCols = aoa.reduce((m,r)=>Math.max(m,r.length),0);
+    aoa.forEach(r=>{ while(r.length<maxCols) r.push(''); });
+
+    let headersC = aoa[0];
+    let dataRows = aoa.slice(1);
+    let {iPrefixo, iNome, iEmail} = guessColumns(headersC, dataRows);
+
+    if (iPrefixo<0 || iNome<0 || iEmail<0){
+      headersC = Array.from({length:maxCols}, (_,i)=>`col${i+1}`);
+      dataRows = aoa;
+      const g = guessColumns(headersC, dataRows);
+      iPrefixo=g.iPrefixo; iNome=g.iNome; iEmail=g.iEmail;
+    }
+
+    if(iPrefixo<0 || iNome<0 || iEmail<0){
+      alert('Não consegui identificar colunas de prefixo, nome (exato “nome”) e email. Verifique a primeira linha ou inclua cabeçalhos.');
+      return [];
+    }
+
     const data=[];
-    for(const line of lines){
-      const p=line.split(sep);
-      data.push({ prefixo:String(p[iPrefixo]||'').trim(), nome:String(p[iNome]||'').trim(), email:String(p[iEmail]||'').trim(), selected:false, attachCount:0 });
+    for(const row of dataRows){
+      const prefixo = String(row[iPrefixo]||'').trim();
+      const nome = String(row[iNome]||'').trim();
+      const email = String(row[iEmail]||'').trim();
+      if (!nome && !email) continue;
+      data.push({ prefixo, nome, email, selected:false, attachCount:0 });
     }
     return data;
   }
@@ -373,7 +449,8 @@ document.addEventListener('DOMContentLoaded', () => {
     tbody.innerHTML=''; filteredContactsIdx = [];
     const q = normalizeKey(el('#searchBox').value);
     contacts.forEach((c,i)=>{
-      const hay = normalizeKey(`${c.prefixo} ${c.nome} ${c.email}`); if(q && !hay.includes(q)) return;
+      const hay = normalizeKey(`${c.prefixo} ${c.nome} ${c.email}`);
+      if(q && !hay.includes(q)) return;
       filteredContactsIdx.push(i);
       const tr=document.createElement('tr');
       tr.innerHTML = `
@@ -386,6 +463,13 @@ document.addEventListener('DOMContentLoaded', () => {
       tbody.appendChild(tr);
     });
     el('#contactStats').textContent = `${contacts.length} contato${contacts.length===1?'':'s'} • ${filteredContactsIdx.length} exibido${filteredContactsIdx.length===1?'':'s'}`;
+    const allSelected = filteredContactsIdx.length>0 && filteredContactsIdx.every(i=>contacts[i]?.selected);
+    const someSelected = filteredContactsIdx.some(i=>contacts[i]?.selected);
+    const selectAll = el('#selectAll');
+    if(selectAll){
+      selectAll.checked = allSelected;
+      selectAll.indeterminate = !allSelected && someSelected;
+    }
   }
 
   function saveContactsIfEnabled(){
@@ -401,7 +485,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadSavedContactsOnStart(){
     const keep = localStorage.getItem('keepContacts') === '1'; el('#keepContacts').checked = keep;
     const saved = localStorage.getItem('savedContactsRaw') || '';
-    if(keep && saved){ el('#contactsInput').value = saved; const data = parseContacts(saved); if(data.length){ contacts = data; renderContacts(); } }
+    if(keep && saved){
+      el('#contactsInput').value = saved;
+      const data = parseContacts(saved);
+      if(data.length){ contacts = data; renderContacts(); }
+    }
   }
   loadSavedContactsOnStart();
 
@@ -409,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
   el('#loadContacts').addEventListener('click', ()=>{
     const raw = el('#contactsInput').value;
     const data = parseContacts(raw);
-    if(!data.length) { log('Nenhum contato válido'); return; }
+    if(!data.length) { log('Nenhum contato válido'); renderContacts(); return; }
     contacts = data; recountAndAutoselect(); renderContacts(); saveContactsIfEnabled();
     log('Contatos carregados (Campo 1)');
   });
@@ -421,6 +509,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(e.target.matches('input[type="checkbox"][data-idx]')){
       const i=Number(e.target.getAttribute('data-idx'));
       if(!Number.isNaN(i) && contacts[i]) contacts[i].selected = e.target.checked;
+      renderContacts();
       updatePreview();
     }
   });
@@ -458,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
             while(ch.firstChild) node.insertBefore(ch.firstChild, ch);
             node.removeChild(ch);
           }else{
-            [...ch.attributes].forEach(a=>{ if(!/^style$/i.test(a.name)) ch.removeAttribute(a.name); else ch.removeAttribute('style'); });
+            [...ch.attributes].forEach(a=>{ ch.removeAttribute(a.name); });
             walk(ch);
           }
         }
@@ -476,7 +565,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   const updatePreviewDebounced = debounce(()=>updatePreview(),120);
 
-  /* ===== Print compacto ===== */
+  /* ===== Helpers de texto/imagem ===== */
+  const titleCaseName = (name)=> !name ? "Fulano" : String(name).toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase());
+  const firstName = (name)=>{
+    if(!name) return "Fulano";
+    const cleaned = String(name).trim().replace(/^(sr\.?|sra\.?|sr\(a\)\.?|dr\.?|dra\.?|prof\.?|profa\.?|mr\.?|mrs\.?|ms\.?)\s+/i, "");
+    const first = cleaned.split(/\s+/)[0] || "Fulano";
+    return first.toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase());
+  };
+
   async function buildPrintForContact(idx){
     const titulo = el('#sheetTitle').value.trim() || 'Planilha';
     const rows = groupedRowsByContact.get(idx) || [];
@@ -511,7 +608,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.fillStyle = '#f8fafc'; ctx.fillRect(x, y, tableW, headerH);
     ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = border;
 
-    // linhas
     ctx.beginPath();
     ctx.moveTo(x, y); ctx.lineTo(x+tableW, y);
     ctx.moveTo(x, y+headerH); ctx.lineTo(x+tableW, y+headerH);
@@ -521,19 +617,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     ctx.stroke();
 
-    // colunas
     let cx = x;
     for(let c=0;c<=headers.length;c++){
       ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, y + headerH + rows.length*rowH); ctx.stroke();
       cx += colW[c]||0;
     }
 
-    // cabeçalho
     ctx.fillStyle = '#111827'; ctx.font = fontBold;
     let rx = x + border + 8;
     headers.forEach((h,i)=>{ ctx.fillText(String(h), rx, y + 20); rx += colW[i]; });
 
-    // linhas
     ctx.font = font; ctx.fillStyle = '#111827';
     let ry = y + headerH + 20;
     rows.forEach(r=>{
@@ -562,10 +655,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ===== Mensagem ===== */
   function buildMessageHTML(contact, dataUrl, bodyHTMLClean){
-    const nome = firstName(contact?.nome);
-    const intro = `<p>Olá ${nome}, tudo bem?</p>`;
+    const introText = makeGreeting(contact);
+    const intro = `<p>${introText}</p>`;
     const content = bodyHTMLClean ? bodyHTMLClean : '';
     const imgHTML = dataUrl ? `<div class="separator"></div><div class="imgwrap"><img src="${dataUrl}" alt="print da planilha"></div>` : '';
     return `<div class="richmsg">${intro}${content}${imgHTML}</div>`;
@@ -576,10 +668,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return (tmp.textContent || tmp.innerText || '').trim();
   }
   function buildMessagePlainText(contact, bodyHTMLClean){
-    const nome = firstName(contact?.nome);
+    const intro = makeGreeting(contact);
     const bodyTxt = htmlToPlainText(bodyHTMLClean || '');
     const partBody = bodyTxt ? `\n\n${bodyTxt}` : '';
-    return `Olá ${nome}, tudo bem?${partBody}\n\n[Print da planilha anexado]`;
+    return `${intro}${partBody}`;
   }
 
   async function updatePreview(){
@@ -587,7 +679,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const bodyHTMLClean = getEditorHTMLClean();
     let idx = contacts.findIndex(c=>c.selected); if(idx<0) idx = contacts.length?0:-1;
     if(idx<0){
-      box.innerHTML = `<div class="richmsg"><p>Olá Fulano, tudo bem?</p><p class="muted">[sua mensagem]</p></div><div class="separator"></div><div class="imgwrap"><div class="muted">[Imagem do print aparecerá aqui]</div></div>`;
+      const previewIntro = (greetingInput.value || DEFAULT_GREETING).replace(/\{nome\}/gi,'Fulano');
+      box.innerHTML = `<div class="richmsg"><p>${previewIntro}</p><p class="muted">[sua mensagem]</p></div><div class="separator"></div><div class="imgwrap"><div class="muted">[Imagem do print aparecerá aqui]</div></div>`;
       return;
     }
     let img = imageCacheByContact.get(idx);
@@ -598,30 +691,6 @@ document.addEventListener('DOMContentLoaded', () => {
   messageBody.addEventListener('input', updatePreview);
   messageBody.addEventListener('keyup', updatePreview);
 
-  function copyHTMLViaHiddenEditable(html){
-    return new Promise((resolve,reject)=>{
-      const div = document.createElement('div');
-      div.contentEditable = 'true';
-      div.style.position = 'fixed';
-      div.style.left = '-99999px';
-      div.style.top = '0';
-      div.style.opacity = '0';
-      div.innerHTML = html;
-      document.body.appendChild(div);
-
-      const range = document.createRange();
-      range.selectNodeContents(div);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-
-      const ok = document.execCommand('copy');
-      sel.removeAllRanges();
-      div.remove();
-      ok ? resolve() : reject(new Error('execCommand falhou'));
-    });
-  }
-
   async function copyMessage(htmlMsg, textMsg, imgBlob){
     if (navigator.clipboard && window.ClipboardItem){
       try{
@@ -631,30 +700,42 @@ document.addEventListener('DOMContentLoaded', () => {
         return 'html';
       }catch(e){}
     }
-    try{
-      await copyHTMLViaHiddenEditable(htmlMsg);
-      return 'html';
-    }catch(e){
-      try{
-        await navigator.clipboard.writeText(textMsg);
-        return 'text';
-      }catch{
-        const ta=document.createElement('textarea'); ta.value=textMsg; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-        return 'text';
-      }
-    }
+    const div = document.createElement('div');
+    div.contentEditable = 'true';
+    div.style.position='fixed'; div.style.left='-99999px'; div.style.top='0'; div.style.opacity='0';
+    div.innerHTML = htmlMsg;
+    document.body.appendChild(div);
+    const range = document.createRange(); range.selectNodeContents(div);
+    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+    const ok = document.execCommand('copy');
+    sel.removeAllRanges(); div.remove();
+    if (ok) return 'html';
+    await navigator.clipboard.writeText(textMsg);
+    return 'text';
   }
 
   function setCollapsed(wrap, collapsed){
     if(collapsed){
       wrap.classList.add('collapsed');
-      const btn = wrap.querySelector('[data-toggle]');
-      if(btn) btn.textContent = 'Expandir';
+      const btn = wrap.querySelector('[data-toggle]'); if(btn) btn.textContent = 'Expandir';
     }else{
       wrap.classList.remove('collapsed');
-      const btn = wrap.querySelector('[data-toggle]');
-      if(btn) btn.textContent = 'Recolher';
+      const btn = wrap.querySelector('[data-toggle]'); if(btn) btn.textContent = 'Recolher';
     }
+  }
+
+  /* ===== TEAMS deep links ===== */
+  const teamsDeepLinkBase = (email)=> 'https://teams.microsoft.com/l/chat/0/0?users=' + encodeURIComponent(email);
+  const teamsDeepLinkWithMessage = (email, messageText)=> teamsDeepLinkBase(email) + (messageText ? '&message=' + encodeURIComponent(messageText) : '');
+  function openTeamsChatNoPrefill(email){
+    if(!email){ alert('Contato sem e-mail.'); return; }
+    const url = teamsDeepLinkBase(email); // sem mensagem pré-carregada
+    window.open(url, '_blank', 'noopener');
+  }
+  function openTeamsChatWithMessage(email, messageText){
+    if(!email){ alert('Contato sem e-mail.'); return; }
+    const url = teamsDeepLinkWithMessage(email, messageText || '');
+    window.open(url, '_blank', 'noopener');
   }
 
   function buildAndMountCardForIdx(idx, bodyHTMLClean){
@@ -676,8 +757,8 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="richmsg" data-htmlmsg></div>
         <div class="toolbar" style="margin-top:8px">
           <button class="btn" data-copy>Copiar mensagem (com imagem)</button>
-          <button class="btn ghost" data-dlimg ${img?'':'disabled'}>Baixar PNG</button>
-          <button class="btn ghost" data-dl>Baixar CSV ${(groupedRowsByContact.get(idx)||[]).length || 0}</button>
+          <button class="btn ghost" data-copyopen ${c.email?'':'disabled'}>Copiar e abrir chat (sem imagem)</button>
+          <button class="btn ghost" data-openchat ${c.email?'':'disabled'}>Abrir chat no Teams (este)</button>
         </div>
       </div>
     `;
@@ -688,35 +769,59 @@ document.addEventListener('DOMContentLoaded', () => {
       setCollapsed(wrap, !wrap.classList.contains('collapsed'));
     });
 
+    // Copiar com imagem
     wrap.querySelector('[data-copy]').addEventListener('click', async ()=>{
-      const mode = await copyMessage(htmlMsg, textMsg, img?.blob);
+      let ensureImg = imageCacheByContact.get(idx);
+      if(!ensureImg){ ensureImg = await buildPrintForContact(idx); imageCacheByContact.set(idx, ensureImg); }
+      const mode = await copyMessage(
+        buildMessageHTML(c, ensureImg?.dataUrl || '', bodyHTMLClean),
+        buildMessagePlainText(c, bodyHTMLClean),
+        ensureImg?.blob
+      );
       const b=wrap.querySelector('[data-copy]');
       b.textContent = mode==='html' ? 'Copiado!' : 'Copiado (texto)';
       setTimeout(()=>b.textContent='Copiar mensagem (com imagem)',1200);
       setCollapsed(wrap, true);
     });
 
-    if(img?.blob){
-      wrap.querySelector('[data-dlimg]').addEventListener('click', ()=>{
-        downloadBlob(`${String(c.prefixo||'print')} - ${titleCaseName(c.nome)}.png`, img.blob);
+    // Copiar (sem imagem) e abrir chat — abre com mensagem pré-carregada
+    const btnCopyOpen = wrap.querySelector('[data-copyopen]');
+    if(btnCopyOpen){
+      btnCopyOpen.addEventListener('click', async ()=>{
+        const bodyClean = getEditorHTMLClean();
+        await copyMessage(
+          buildMessageHTML(c, '', bodyClean),
+          buildMessagePlainText(c, bodyClean),
+          null
+        );
+        openTeamsChatWithMessage(c.email, buildMessagePlainText(c, bodyClean));
+        setCollapsed(wrap, true);
       });
     }
 
-    wrap.querySelector('[data-dl]').addEventListener('click', ()=>{
-      const rows = groupedRowsByContact.get(idx) || [];
-      if(!rows.length){ alert('Sem linhas para este contato.'); return; }
-      const csv = toCSVRows(rows, headers);
-      const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-      downloadBlob(`${String(c.prefixo||'sem-prefixo')} - ${titleCaseName(c.nome)}.csv`, blob);
-    });
+    // Abrir chat (este) — AGORA: copia mensagem COM IMAGEM e abre chat sem pré-carregar texto (Ctrl+V no Teams)
+    const btnChat = wrap.querySelector('[data-openchat]');
+    if(btnChat){
+      btnChat.addEventListener('click', async ()=>{
+        const bodyClean = getEditorHTMLClean();
+        let ensureImg = imageCacheByContact.get(idx);
+        if(!ensureImg){ ensureImg = await buildPrintForContact(idx); imageCacheByContact.set(idx, ensureImg); }
+        await copyMessage(
+          buildMessageHTML(c, ensureImg?.dataUrl || '', bodyClean),
+          buildMessagePlainText(c, bodyClean),
+          ensureImg?.blob
+        );
+        openTeamsChatNoPrefill(c.email); // sem mensagem na URL; usuário só dá Ctrl+V
+        setCollapsed(wrap, true);
+      });
+    }
   }
 
   function sortSelectedIndices(selectedIdx){
     const mode = (el('#sortOrder')?.value || 'original');
     if(mode === 'nome_az'){
       const arr = selectedIdx.slice().map(i=>({
-        i,
-        key: stripAccents(firstName(contacts[i]?.nome || '')).toLowerCase()
+        i, key: stripAccents(firstName(contacts[i]?.nome || '')).toLowerCase()
       }));
       arr.sort((a,b)=> a.key.localeCompare(b.key));
       return arr.map(x=>x.i);
@@ -744,76 +849,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
   el('#generateMsgs').addEventListener('click', async ()=>{ await regenerateOutput(); });
 
-  /* ZIP prints */
-  el('#downloadZip').addEventListener('click', async ()=>{
-    const selIdx = contacts.map((c,i)=> c.selected ? i : -1).filter(i=>i>=0);
-    if(!selIdx.length){ alert('Nenhum contato selecionado.'); return; }
-    const zip = new JSZip(); let added=0;
-    for(const idx of selIdx){
-      if(!imageCacheByContact.get(idx)){ const img = await buildPrintForContact(idx); imageCacheByContact.set(idx, img); }
-      const c = contacts[idx]; const img = imageCacheByContact.get(idx);
-      if(img?.blob){ zip.file(`${String(c.prefixo||'print')} - ${titleCaseName(c.nome)}.png`, img.blob); added++; }
-    }
-    if(!added){ alert('Nenhum print disponível.'); return; }
-    const blob = await zip.generateAsync({type:'blob'}); saveAs(blob, 'prints_por_contato.zip');
-    log('ZIP gerado');
-  });
-
-  /* Exportar XLSX com Tabela tblDisparos */
-  function collectGeneratedMessages(){
-    const cards = Array.from(document.querySelectorAll('#output .msg'));
-    return cards.map(card=>{
-      const nome = (card.querySelector('.msg__head strong')?.textContent||'').trim();
-      const emailB = (card.querySelector('.msg__head .badge')?.textContent||'').trim();
-      const email = emailB === 'sem email' ? '' : emailB;
-      const prefEl = Array.from(card.querySelectorAll('.msg__head .badge')).find(b=>b.textContent.includes('Prefixo'));
-      const prefixo = prefEl ? prefEl.textContent.replace('Prefixo:','').trim() : '';
-      const htmlEl = card.querySelector('[data-htmlmsg]');
-      const html = htmlEl ? htmlEl.innerHTML : '';
-      const tmp = document.createElement('div'); tmp.innerHTML = html;
-      const texto = (tmp.textContent || '').trim();
-      return { Titulo: (document.querySelector('#sheetTitle')?.value || 'Disparos').trim(), Prefixo: prefixo, Nome: nome, Email: email, Texto: texto, Html: html };
+  /* ===== Botão TEAMS (teste no campo 3) ===== */
+  const zipBtn = el('#downloadZip');
+  if(zipBtn){
+    zipBtn.textContent = 'Abrir chat no Teams (teste)';
+    zipBtn.addEventListener('click', async ()=>{
+      const firstIdx = contacts.findIndex(c=>c.selected);
+      if(firstIdx<0){ alert('Selecione ao menos um contato na lista.'); return; }
+      const bodyHTMLClean = getEditorHTMLClean();
+      let ensureImg = imageCacheByContact.get(firstIdx);
+      if(!ensureImg){ ensureImg = await buildPrintForContact(firstIdx); imageCacheByContact.set(firstIdx, ensureImg); }
+      await copyMessage(
+        buildMessageHTML(contacts[firstIdx], ensureImg?.dataUrl || '', bodyHTMLClean),
+        buildMessagePlainText(contacts[firstIdx], bodyHTMLClean),
+        ensureImg?.blob
+      );
+      // No teste, ainda abrimos COM mensagem pré-carregada
+      openTeamsChatWithMessage(contacts[firstIdx].email, buildMessagePlainText(contacts[firstIdx], bodyHTMLClean));
+      log('Deep link do Teams aberto (teste) + conteúdo copiado para colar no chat.');
     });
   }
 
-  async function exportForFlowXLSX(){
-    const msgs = collectGeneratedMessages();
-    if(!msgs.length){ alert('Gere as mensagens no Campo 4 antes de exportar.'); return; }
-
-    const wb = new ExcelJS.Workbook();
-    const ws = wb.addWorksheet('Disparos');
-
-    const headersX = ['Titulo','Prefixo','Nome','Email','Texto','Html'];
-    ws.columns = [
-      { header:'Titulo', key:'Titulo', width:24 },
-      { header:'Prefixo', key:'Prefixo', width:12 },
-      { header:'Nome', key:'Nome', width:24 },
-      { header:'Email', key:'Email', width:28 },
-      { header:'Texto', key:'Texto', width:44 },
-      { header:'Html', key:'Html', width:60 }
-    ];
-    msgs.forEach(m=> ws.addRow(m));
-
-    ws.addTable({
-      name: 'tblDisparos',
-      ref: 'A1',
-      headerRow: true,
-      style: { theme: 'TableStyleMedium2', showRowStripes: true },
-      columns: headersX.map(h=>({ name: h })),
-      rows: msgs.map(m=>[m.Titulo, m.Prefixo, m.Nome, m.Email, m.Texto, m.Html])
-    });
-    ws.views = [{ state:'frozen', ySplit:1 }];
-
-    const buf = await wb.xlsx.writeBuffer();
-    const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    downloadBlob('fluxo_teams_sharepoint.xlsx', blob);
-
-    const btn = el('#exportForFlow'); if(btn){ const old=btn.textContent; btn.textContent='XLSX gerado!'; setTimeout(()=>btn.textContent=old,1400); }
-    log('XLSX gerado com tblDisparos');
-  }
-  el('#exportForFlow').addEventListener('click', exportForFlowXLSX);
-
-  /* Atualizações globais */
+  /* ===== Atualizações globais ===== */
   function updatePreviewOnChange(){ updatePreview(); }
   messageBody.addEventListener('input', debounce(updatePreviewOnChange,120));
 
@@ -827,18 +884,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const { headers: h0, rowsAoA } = extractFromEditable(sheetPaste);
       if(h0?.length && rowsAoA?.length){
         const hdrRowInput = el('#headerRow').value.trim();
-        let hdrIdx = 0;
-        if(hdrRowInput){ const n = parseInt(hdrRowInput,10); if(Number.isInteger(n) && n>=1 && n<=rowsAoA.length+1){ hdrIdx = n-1; } }
         const aoaFull = [h0, ...rowsAoA];
+        let hdrIdx = 0;
+        if(hdrRowInput){ const n=parseInt(hdrRowInput,10); if(Number.isInteger(n) && n>=1 && n<=aoaFull.length){ hdrIdx=n-1; } }
         const headersRow = aoaFull[hdrIdx] || aoaFull[0];
         headers = headersRow.map(x=>String(x||'').trim());
-        const dataAoA = aoaFull.slice(hdrIdx+1).filter(r=>r.some(v=>String(v).trim()!==''));
+        const dataAoA = aoaFull.slice(hdrIdx+1).filter(r=> r.some(v=>String(v).trim()!==''));
         rowsAll = dataAoA.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o; });
         imageCacheByContact.clear();
         el('#attachStats').textContent = `Planilha colada: ${rowsAll.length} linha(s) • ${headers.length} coluna(s)`;
         el('#clearAttach').disabled = rowsAll.length===0;
         el('#downloadZip').disabled = rowsAll.length===0;
+      }else{
+        el('#attachStats').textContent = 'Sem dados';
       }
+      refreshPreviewFromEditable();
     }catch(e){ showError('Falha ao atualizar dados colados.', e?.message||String(e)); logErr(e?.message||String(e)); }
 
     recountAndAutoselect();
