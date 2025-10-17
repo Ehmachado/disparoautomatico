@@ -598,6 +598,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalW = Math.ceil(padX*2 + tableW);
     const totalH = Math.ceil(padY*2 + titleH + gapTitle + tableH);
 
+    // Render base
     tmp.width = totalW; tmp.height = totalH;
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,totalW,totalH);
     ctx.font = titleFont; ctx.fillStyle = '#0f172a';
@@ -635,16 +636,21 @@ document.addEventListener('DOMContentLoaded', () => {
       ry += rowH;
     });
 
+    // Tamanho visual alvo (mantido), mas dobramos a resolução (100% a mais de pixels)
     const targetW = Math.min(520, totalW);
     const scale = targetW / totalW;
     const targetH = Math.round(totalH * scale);
 
+    // *** ALTERAÇÃO: aumentar resolução em 100% (UPSCALE = 2) ***
+    const UPSCALE = 2; // 2x pixels = +100% resolução
     const small = document.createElement('canvas');
-    small.width = targetW; small.height = targetH;
+    small.width = Math.round(targetW * UPSCALE);
+    small.height = Math.round(targetH * UPSCALE);
     const c2 = small.getContext('2d');
     c2.imageSmoothingEnabled = true;
     c2.imageSmoothingQuality = 'high';
-    c2.drawImage(tmp, 0, 0, targetW, targetH);
+    // desenha já no tamanho final upscalado (mantém nitidez ao reduzir no CSS/visual)
+    c2.drawImage(tmp, 0, 0, small.width, small.height);
 
     return new Promise(resolve=>{
       small.toBlob(blob=>{
@@ -799,7 +805,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // Abrir chat (este) — AGORA: copia mensagem COM IMAGEM e abre chat sem pré-carregar texto (Ctrl+V no Teams)
+    // Abrir chat (este) — copia mensagem COM IMAGEM e abre chat sem pré-carregar texto (Ctrl+V no Teams)
     const btnChat = wrap.querySelector('[data-openchat]');
     if(btnChat){
       btnChat.addEventListener('click', async ()=>{
@@ -811,7 +817,7 @@ document.addEventListener('DOMContentLoaded', () => {
           buildMessagePlainText(c, bodyClean),
           ensureImg?.blob
         );
-        openTeamsChatNoPrefill(c.email); // sem mensagem na URL; usuário só dá Ctrl+V
+        openTeamsChatNoPrefill(c.email);
         setCollapsed(wrap, true);
       });
     }
