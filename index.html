@@ -5,96 +5,561 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Disparador — Print compacto com cópia automática</title>
 
-<!-- Dependências (mantidas; não quebram nada mesmo sem exportar) -->
+<!-- Dependências -->
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 
 <style>
-  :root{--bb-azul:#0033a0;--bg:#f6f7fb;--card:#fff;--muted:#6b7280;--radius:16px}
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:linear-gradient(135deg,#f0f3ff,#f8fafc);color:#111827}
-  header{padding:20px 24px;background:var(--bb-azul);color:#fff;display:flex;align-items:center;justify-content:space-between}
-  header h1{margin:0;font-size:20px;font-weight:700}
-  .pill{display:inline-flex;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;background:#ecfeff;color:#0c4a6e}
-  .container{max-width:1200px;margin:24px auto;padding:0 16px}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-  .card{background:var(--card);border-radius:16px;box-shadow:0 6px 24px rgba(3,7,18,.08);padding:16px}
-  .card h2{margin:0 0 12px;font-size:16px}
-  .helper{font-size:12px;color:var(--muted);margin-top:6px}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  textarea,input[type="text"],select{width:100%;padding:10px 12px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;font:inherit}
-  textarea{min-height:120px;resize:vertical}
-  .btn{appearance:none;border:0;background:var(--bb-azul);color:#fff;padding:10px 14px;border-radius:12px;font-weight:600;cursor:pointer}
-  .btn.ghost{background:#fff;color:#0f172a;border:1px solid #e5e7eb}
-  .btn.dark{background:#0f172a}
-  .table-wrap{border:1px solid #e5e7eb;border-radius:12px;overflow:auto;background:#fff}
-  table{width:100%;border-collapse:collapse;font-size:14px}
-  th,td{padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:left;white-space:nowrap}
-  thead th{background:#f8fafc;font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:.02em;position:sticky;top:0;z-index:1}
-  .list{display:grid;gap:12px}
-  .msg{border:1px dashed #cbd5e1;border-radius:12px;padding:12px;background:#fcfcff}
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  
+  :root{
+    --bb-azul:#0033a0;
+    --bb-azul-dark:#002780;
+    --bg:#f6f7fb;
+    --card:#fff;
+    --muted:#6b7280;
+    --text:#111827;
+    --border:#e5e7eb;
+    --radius:16px;
+    --shadow:0 4px 16px rgba(3,7,18,.08);
+    --shadow-lg:0 8px 32px rgba(3,7,18,.12);
+  }
+  
+  *{box-sizing:border-box;margin:0;padding:0}
+  
+  body{
+    margin:0;
+    font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+    background:linear-gradient(135deg,#f0f3ff 0%,#f8fafc 100%);
+    color:var(--text);
+    line-height:1.6;
+    min-height:100vh;
+  }
+  
+  header{
+    padding:24px 32px;
+    background:linear-gradient(135deg,var(--bb-azul) 0%,var(--bb-azul-dark) 100%);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    box-shadow:var(--shadow-lg);
+    position:sticky;
+    top:0;
+    z-index:100;
+  }
+  
+  header h1{
+    margin:0;
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:-.02em;
+  }
+  
+  header small{
+    display:block;
+    margin-top:4px;
+    opacity:.85;
+    font-size:13px;
+    font-weight:400;
+  }
+  
+  .pill{
+    display:inline-flex;
+    gap:6px;
+    padding:6px 14px;
+    border-radius:999px;
+    font-size:12px;
+    font-weight:600;
+    background:rgba(255,255,255,.15);
+    backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.2);
+  }
+  
+  .container{
+    max-width:1400px;
+    margin:32px auto;
+    padding:0 24px;
+  }
+  
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(500px, 1fr));
+    gap:20px;
+  }
+  
+  @media (max-width: 1100px){
+    .grid{grid-template-columns:1fr}
+  }
+  
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:24px;
+    border:1px solid var(--border);
+    transition:box-shadow .2s ease;
+  }
+  
+  .card:hover{
+    box-shadow:var(--shadow-lg);
+  }
+  
+  .card h2{
+    margin:0 0 8px;
+    font-size:18px;
+    font-weight:700;
+    color:var(--bb-azul);
+    display:flex;
+    align-items:center;
+    gap:8px;
+  }
+  
+  .card h2::before{
+    content:'';
+    display:inline-block;
+    width:4px;
+    height:20px;
+    background:var(--bb-azul);
+    border-radius:2px;
+  }
+  
+  .helper{
+    font-size:13px;
+    color:var(--muted);
+    margin-top:8px;
+    line-height:1.5;
+  }
+  
+  .helper b{
+    color:var(--bb-azul);
+    font-weight:600;
+  }
+  
+  .toolbar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    margin-top:12px;
+  }
+  
+  textarea,
+  input[type="text"],
+  select{
+    width:100%;
+    padding:12px 14px;
+    border:1.5px solid var(--border);
+    border-radius:12px;
+    background:#fff;
+    font:inherit;
+    font-size:14px;
+    transition:all .2s ease;
+    outline:none;
+  }
+  
+  textarea:focus,
+  input[type="text"]:focus,
+  select:focus{
+    border-color:var(--bb-azul);
+    box-shadow:0 0 0 3px rgba(0,51,160,.08);
+  }
+  
+  textarea{
+    min-height:140px;
+    resize:vertical;
+    font-family:'SF Mono',Monaco,Consolas,monospace;
+    font-size:13px;
+  }
+  
+  .btn{
+    appearance:none;
+    border:none;
+    background:var(--bb-azul);
+    color:#fff;
+    padding:10px 18px;
+    border-radius:10px;
+    font-weight:600;
+    font-size:14px;
+    cursor:pointer;
+    transition:all .2s ease;
+    white-space:nowrap;
+  }
+  
+  .btn:hover:not(:disabled){
+    background:var(--bb-azul-dark);
+    transform:translateY(-1px);
+    box-shadow:0 4px 12px rgba(0,51,160,.25);
+  }
+  
+  .btn:active:not(:disabled){
+    transform:translateY(0);
+  }
+  
+  .btn:disabled{
+    opacity:.5;
+    cursor:not-allowed;
+  }
+  
+  .btn.ghost{
+    background:#fff;
+    color:var(--text);
+    border:1.5px solid var(--border);
+  }
+  
+  .btn.ghost:hover:not(:disabled){
+    background:#f9fafb;
+    border-color:#d1d5db;
+    transform:translateY(-1px);
+    box-shadow:0 2px 8px rgba(0,0,0,.06);
+  }
+  
+  .btn.dark{
+    background:#0f172a;
+  }
+  
+  .btn.dark:hover:not(:disabled){
+    background:#1e293b;
+  }
+  
+  .table-wrap{
+    border:1.5px solid var(--border);
+    border-radius:12px;
+    overflow:auto;
+    background:#fff;
+    max-height:320px;
+  }
+  
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:13px;
+  }
+  
+  th,td{
+    padding:10px 12px;
+    border-bottom:1px solid #f1f5f9;
+    text-align:left;
+    white-space:nowrap;
+  }
+  
+  tbody tr:hover{
+    background:#f9fafb;
+  }
+  
+  thead th{
+    background:#f8fafc;
+    font-size:11px;
+    color:#64748b;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    font-weight:700;
+    position:sticky;
+    top:0;
+    z-index:10;
+    border-bottom:2px solid var(--border);
+  }
+  
+  .list{
+    display:grid;
+    gap:16px;
+  }
+  
+  .msg{
+    border:1.5px solid var(--border);
+    border-radius:12px;
+    padding:16px;
+    background:#fcfcff;
+    transition:all .2s ease;
+  }
+  
+  .msg:hover{
+    border-color:#cbd5e1;
+    box-shadow:0 2px 12px rgba(0,0,0,.04);
+  }
+  
   .muted{color:var(--muted)}
-  .badge{font-size:12px;padding:3px 8px;border-radius:999px;background:#eef2ff;color:#3730a3}
+  
+  .badge{
+    font-size:11px;
+    padding:4px 10px;
+    border-radius:999px;
+    background:#eef2ff;
+    color:#4338ca;
+    font-weight:600;
+    white-space:nowrap;
+  }
+  
+  .badge.success{
+    background:#ecfdf5;
+    color:#065f46;
+  }
+  
+  .badge.warning{
+    background:#fef3c7;
+    color:#92400e;
+  }
+  
   .right{margin-left:auto}
-  .ok{background:#ecfdf5;border:1px solid #bbf7d0;color:#065f46;border-radius:12px;padding:6px 10px;font-size:12px}
-  .err{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;border-radius:12px;padding:10px;font-size:12px}
-  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  
+  .ok{
+    background:#ecfdf5;
+    border:1.5px solid #bbf7d0;
+    color:#065f46;
+    border-radius:10px;
+    padding:8px 12px;
+    font-size:13px;
+    font-weight:600;
+  }
+  
+  .err{
+    background:#fef2f2;
+    border:1.5px solid #fecaca;
+    color:#991b1b;
+    border-radius:10px;
+    padding:12px;
+    font-size:13px;
+    font-weight:600;
+  }
+  
+  .row{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    flex-wrap:wrap;
+  }
+  
   .small{font-size:12px}
-  .sheet-paste{width:100%;min-height:160px;border:1.5px dashed #94a3b8;border-radius:12px;background:#fff;padding:10px;overflow:auto}
-  .sheet-paste:focus{outline:2px solid #93c5fd; outline-offset:2px}
-  .ghost-table{max-height:220px;overflow:auto;border:1px solid #e5e7eb;border-radius:10px;margin-top:8px}
+  
+  .sheet-paste{
+    width:100%;
+    min-height:180px;
+    border:2px dashed #94a3b8;
+    border-radius:12px;
+    background:#fafbfc;
+    padding:12px;
+    overflow:auto;
+    font-family:'SF Mono',Monaco,Consolas,monospace;
+    font-size:12px;
+    transition:all .2s ease;
+  }
+  
+  .sheet-paste:focus{
+    outline:none;
+    border-color:var(--bb-azul);
+    background:#fff;
+    box-shadow:0 0 0 3px rgba(0,51,160,.08);
+  }
+  
+  .ghost-table{
+    max-height:240px;
+    overflow:auto;
+    border:1.5px solid var(--border);
+    border-radius:10px;
+    margin-top:10px;
+  }
+  
   .richmsg p{margin:.5em 0}
-  .separator{margin:10px 0;height:1px;background:#e5e7eb}
-  .imgwrap{display:flex;flex-direction:column;gap:8px}
-  .richmsg img{max-width:520px;width:100%;height:auto;border:1px solid #e5e7eb;border-radius:8px}
-  .rte-bar{display:flex;gap:6px;margin:8px 0}
-  .rte-btn{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:6px 10px;cursor:pointer;font-weight:600}
-  .rte-btn.active{border-color:#c7d2fe;background:#eef2ff}
-  #messageBody{min-height:140px;border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff;overflow:auto}
-  #messageBody:focus{outline:2px solid #93c5fd; outline-offset:2px}
-  #messageBody:empty:before{content:attr(data-placeholder); color:#9ca3af}
+  
+  .separator{
+    margin:12px 0;
+    height:1px;
+    background:linear-gradient(90deg, transparent, var(--border), transparent);
+  }
+  
+  .imgwrap{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+  }
+  
+  .richmsg img{
+    max-width:100%;
+    height:auto;
+    border:1.5px solid var(--border);
+    border-radius:10px;
+    box-shadow:0 2px 8px rgba(0,0,0,.06);
+  }
+  
+  .rte-bar{
+    display:flex;
+    gap:8px;
+    margin:10px 0;
+  }
+  
+  .rte-btn{
+    border:1.5px solid var(--border);
+    background:#fff;
+    border-radius:8px;
+    padding:8px 12px;
+    cursor:pointer;
+    font-weight:600;
+    font-size:13px;
+    transition:all .2s ease;
+  }
+  
+  .rte-btn:hover{
+    background:#f9fafb;
+    border-color:#d1d5db;
+  }
+  
+  .rte-btn.active{
+    border-color:#c7d2fe;
+    background:#eef2ff;
+    color:var(--bb-azul);
+  }
+  
+  #messageBody{
+    min-height:160px;
+    border:1.5px solid var(--border);
+    border-radius:12px;
+    padding:14px;
+    background:#fff;
+    overflow:auto;
+    font-size:14px;
+    line-height:1.7;
+    transition:all .2s ease;
+  }
+  
+  #messageBody:focus{
+    outline:none;
+    border-color:var(--bb-azul);
+    box-shadow:0 0 0 3px rgba(0,51,160,.08);
+  }
+  
+  #messageBody:empty:before{
+    content:attr(data-placeholder);
+    color:#9ca3af;
+  }
+  
   #messageBody p{margin:.6em 0}
   #messageBody b,#messageBody strong{font-weight:700}
   #messageBody i,#messageBody em{font-style:italic}
   #messageBody u{text-decoration:underline}
-  .msg__head{display:flex; gap:8px; align-items:center; margin-bottom:6px}
-  .msg__toggle{margin-left:auto; font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid #e5e7eb; background:#fff; cursor:pointer}
-  .msg.collapsed{background:#f8fafc}
+  
+  .msg__head{
+    display:flex;
+    gap:10px;
+    align-items:center;
+    margin-bottom:8px;
+  }
+  
+  .msg__toggle{
+    margin-left:auto;
+    font-size:12px;
+    padding:6px 12px;
+    border-radius:8px;
+    border:1.5px solid var(--border);
+    background:#fff;
+    cursor:pointer;
+    font-weight:600;
+    transition:all .2s ease;
+  }
+  
+  .msg__toggle:hover{
+    background:#f9fafb;
+  }
+  
+  .msg.collapsed{
+    background:#f8fafc;
+    border-style:dashed;
+  }
+  
   .msg.collapsed .msg__body{display:none}
-  #logs{margin-top:8px;font-size:12px}
+  
+  #logs{
+    margin-top:10px;
+    font-size:12px;
+  }
+  
+  input[type="checkbox"]{
+    width:18px;
+    height:18px;
+    cursor:pointer;
+    accent-color:var(--bb-azul);
+  }
+  
+  label{
+    cursor:pointer;
+    user-select:none;
+  }
+  
+  code{
+    background:#f1f5f9;
+    padding:2px 6px;
+    border-radius:4px;
+    font-family:'SF Mono',Monaco,Consolas,monospace;
+    font-size:12px;
+    color:var(--bb-azul);
+  }
+  
+  /* Loading state */
+  .loading{
+    opacity:.6;
+    pointer-events:none;
+    position:relative;
+  }
+  
+  .loading::after{
+    content:'';
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:20px;
+    height:20px;
+    margin:-10px 0 0 -10px;
+    border:2px solid var(--bb-azul);
+    border-right-color:transparent;
+    border-radius:50%;
+    animation:spin .6s linear infinite;
+  }
+  
+  @keyframes spin{
+    to{transform:rotate(360deg)}
+  }
 </style>
 </head>
 <body>
 <header>
   <div>
-    <h1>Disparador — Print compacto</h1>
+    <h1>📤 Disparador — Print compacto</h1>
     <small>Colar como planilha • Contatos salvos • Copiar mensagem com imagem</small>
   </div>
-  <div class="pill">100% local</div>
+  <div class="pill">🔒 100% local</div>
 </header>
 
 <div class="container">
   <div class="grid">
-    <!-- 1) Contatos -->
+    
+    <!-- Campo 1: Contatos -->
     <section class="card">
-      <h2>1) Contatos</h2>
-      <div class="helper">Cole tabela com cabeçalhos (flexível): <b>prefixo/pref/agência</b>, <b>nome</b>, <b>email/e-mail/mail/contato</b>. Preferência explícita pela coluna <b>“nome”</b> para o nome da pessoa.</div>
+      <h2>1️⃣ Contatos</h2>
+      <div class="helper">
+        Cole tabela com cabeçalhos (flexível): <b>prefixo/pref/agência</b>, <b>nome</b>, <b>email/e-mail/mail/contato</b>. 
+        Preferência explícita pela coluna <b>"nome"</b> para o nome da pessoa.
+      </div>
+      
       <textarea id="contactsInput" placeholder="Exemplo:
 prefixo nome email
 123 Maria Clara Souza maria@empresa.com
 456 João Pedro joao@empresa.com"></textarea>
-      <div class="toolbar" style="margin-top:8px;">
-        <button class="btn" id="loadContacts">Carregar contatos</button>
-        <button class="btn ghost" id="clearContacts">Limpar</button>
-        <button class="btn ghost" id="refreshContacts">Atualizar</button>
-        <input id="searchBox" type="text" placeholder="Filtrar por nome, email ou prefixo..." />
+      
+      <div class="toolbar">
+        <button class="btn" id="loadContacts">📥 Carregar contatos</button>
+        <button class="btn ghost" id="clearContacts">🗑️ Limpar</button>
+        <button class="btn ghost" id="refreshContacts">🔄 Atualizar</button>
+      </div>
+      
+      <div class="row" style="margin-top:12px">
+        <input id="searchBox" type="text" placeholder="🔍 Filtrar por nome, email ou prefixo..." />
         <label class="small" style="display:flex; align-items:center; gap:6px">
-          <input type="checkbox" id="keepContacts"> Manter contatos salvos neste navegador
+          <input type="checkbox" id="keepContacts"> Salvar localmente
         </label>
         <div class="right"><span id="contactStats" class="badge">0 contatos</span></div>
       </div>
-      <div class="table-wrap" style="margin-top:10px; max-height:280px; overflow:auto">
+      
+      <div class="table-wrap" style="margin-top:12px">
         <table id="contactsTable">
           <thead>
             <tr>
@@ -108,99 +573,141 @@ prefixo nome email
           <tbody></tbody>
         </table>
       </div>
+      
       <div id="logs" class="helper"></div>
     </section>
 
-    <!-- 2) Mensagem + PRÉVIA -->
+    <!-- Campo 2: Mensagem -->
     <section class="card">
-      <h2>2) Mensagem</h2>
+      <h2>2️⃣ Mensagem</h2>
       <div class="helper">
         Personalize a saudação usando <b>{nome}</b> para o primeiro nome.<br>
         Ex.: <code>Olá {nome}, tudo bem?</code>
       </div>
 
-      <!-- Saudação personalizada -->
-      <div class="row" style="margin:8px 0">
+      <div class="row" style="margin:12px 0">
         <input id="greetingInput" type="text" placeholder="Saudação (use {nome}) — ex.: Olá {nome}, tudo bem?" />
-        <button class="btn ghost" id="saveGreeting" title="Salvar saudação no navegador">Salvar saudação</button>
+        <button class="btn ghost" id="saveGreeting" title="Salvar saudação no navegador">💾 Salvar</button>
       </div>
 
       <div class="rte-bar">
-        <button class="rte-btn" data-cmd="bold" title="Negrito (Ctrl+B)">B</button>
+        <button class="rte-btn" data-cmd="bold" title="Negrito (Ctrl+B)"><b>B</b></button>
         <button class="rte-btn" data-cmd="italic" title="Itálico (Ctrl+I)"><i>I</i></button>
         <button class="rte-btn" data-cmd="underline" title="Sublinhado (Ctrl+U)"><u>U</u></button>
-        <button class="btn ghost right" id="refreshMsg">Atualizar</button>
+        <button class="btn ghost right" id="refreshMsg">🔄 Atualizar</button>
       </div>
 
       <div id="messageBody" contenteditable="true" data-placeholder="Escreva aqui o texto após a saudação. Use os botões para negrito/itálico/sublinhado."></div>
 
       <div class="helper">A imagem (print) inclui o <b>título</b>, o <b>cabeçalho</b> e as <b>linhas do contato</b>.</div>
-      <div style="margin-top:8px">
-        <label class="muted">Prévia:</label>
+      
+      <div style="margin-top:12px">
+        <label class="muted"><b>👁️ Prévia:</b></label>
         <div class="msg" id="previewBox">
           <div class="richmsg"><p>Olá Fulano, tudo bem?</p><p class="muted">[sua mensagem]</p></div>
           <div class="separator"></div>
           <div class="imgwrap"><div class="muted">[Imagem do print aparecerá aqui]</div></div>
         </div>
       </div>
-      <div class="toolbar" style="margin-top:8px">
-        <button class="btn" id="generateMsgs">Gerar mensagens</button>
+      
+      <div class="toolbar">
+        <button class="btn" id="generateMsgs">✨ Gerar mensagens</button>
       </div>
     </section>
 
-    <!-- 3) Planilha -->
+    <!-- Campo 3: Planilha -->
     <section class="card">
-      <h2>3) Planilha — cole aqui (Ctrl+V)</h2>
-      <div class="helper">Cole direto do Excel/Sheets. Informe um <b>Título da planilha</b> para ir no print.</div>
-      <input id="sheetTitle" type="text" placeholder="Título da planilha (ex.: Relatório por Prefixo)" />
-      <div id="sheetPaste" class="sheet-paste" contenteditable="true" spellcheck="false"></div>
-      <div class="row" style="margin-top:8px">
-        <label>Linha do cabeçalho:</label>
-        <input id="headerRow" type="text" placeholder="1 (padrão)" style="width:120px">
-        <button class="btn" id="usePasted">Usar dados colados</button>
-        <button class="btn ghost" id="clearAttach" disabled>Limpar dados</button>
-        <button class="btn ghost" id="refreshSheet">Atualizar</button>
-        <div class="right"><span id="attachStats" class="badge">Sem dados</span></div>
+      <h2>3️⃣ Planilha — cole aqui (Ctrl+V)</h2>
+      <div class="helper">
+        Cole direto do Excel/Sheets. Informe um <b>Título da planilha</b> para ir no print.
       </div>
+      
+      <input id="sheetTitle" type="text" placeholder="📊 Título da planilha (ex.: Relatório por Prefixo)" style="margin-bottom:12px" />
+      
+      <div id="sheetPaste" class="sheet-paste" contenteditable="true" spellcheck="false"></div>
+      
+      <div class="row" style="margin-top:12px">
+        <label style="white-space:nowrap">Linha do cabeçalho:</label>
+        <input id="headerRow" type="text" placeholder="1 (padrão)" style="width:100px">
+        <button class="btn" id="usePasted">✅ Usar dados colados</button>
+        <button class="btn ghost" id="clearAttach" disabled>🗑️ Limpar</button>
+        <button class="btn ghost" id="refreshSheet">🔄 Atualizar</button>
+        <div class="right"><span id="attachStats" class="badge warning">Sem dados</span></div>
+      </div>
+      
       <div id="errorBox" class="helper"></div>
 
-      <div class="helper" style="margin-top:6px">Pré-visualização (rolagem horizontal):</div>
+      <div class="helper" style="margin-top:8px">💡 Pré-visualização (rolagem horizontal):</div>
       <div id="sheetPreview" class="ghost-table" style="display:none"></div>
 
-      <div class="toolbar" style="margin-top:8px">
-        <button class="btn" id="downloadZip" disabled>Abrir chat no Teams (teste)</button>
+      <div class="toolbar" style="margin-top:12px">
+        <button class="btn dark" id="downloadZip" disabled>💬 Abrir chat no Teams (teste)</button>
       </div>
-      <div class="helper">Associação por: <b>prefixo</b> OU <b>dependência</b> OU <b>nome</b> igual ao nome do contato.</div>
+      
+      <div class="helper">
+        Associação por: <b>prefixo</b> OU <b>dependência</b> OU <b>nome</b> igual ao nome do contato.
+      </div>
     </section>
 
-    <!-- 4) Saída -->
+    <!-- Campo 4: Saída -->
     <section class="card" style="grid-column: span 2">
-      <div class="row" style="justify-content:space-between; align-items:center">
-        <h2 style="margin:0">4) Mensagens geradas (copiar & colar)</h2>
-        <div class="row" style="gap:8px; align-items:center">
+      <div class="row" style="justify-content:space-between; align-items:center; margin-bottom:16px">
+        <h2 style="margin:0">4️⃣ Mensagens geradas (copiar & colar)</h2>
+        <div class="row" style="gap:10px; align-items:center">
           <label class="small" for="sortOrder">Ordenar:</label>
           <select id="sortOrder" style="width:auto">
             <option value="original" selected>Original</option>
             <option value="nome_az">Nome (A→Z)</option>
           </select>
-          <button class="btn ghost" id="refreshAll">Atualizar</button>
+          <button class="btn ghost" id="refreshAll">🔄 Atualizar tudo</button>
         </div>
       </div>
-      <div class="helper">“Copiar mensagem” copia HTML com imagem (quando suportado). Abra o chat e cole (Ctrl+V).</div>
+      
+      <div class="helper">
+        💡 "Copiar mensagem" copia HTML com imagem (quando suportado). Abra o chat e cole (Ctrl+V).
+      </div>
+      
       <div id="output" class="list"></div>
     </section>
+    
   </div>
 </div>
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  /* ===== Logs/erros ===== */
+  'use strict';
+  
+  /* ========================================
+     SISTEMA DE LOGS E ERROS
+  ======================================== */
   const logBox = document.getElementById('logs');
-  const log = (m)=>{ if(logBox) logBox.innerHTML = '<span class="ok">OK:</span> ' + m; };
-  const logErr = (m)=>{ if(logBox) logBox.innerHTML = '<div class="err"><b>Erro:</b> ' + m + '</div>'; };
-  window.addEventListener('error', e=> logErr(e?.message || 'Erro de script'));
+  
+  const log = (msg, type = 'ok') => {
+    if (!logBox) return;
+    const icon = type === 'ok' ? '✅' : type === 'warn' ? '⚠️' : '❌';
+    const className = type === 'ok' ? 'ok' : 'err';
+    logBox.innerHTML = `<div class="${className}">${icon} ${msg}</div>`;
+    console.log(`[${type.toUpperCase()}] ${msg}`);
+  };
+  
+  const logErr = (msg, detail = '') => {
+    if (!logBox) return;
+    const fullMsg = detail ? `${msg}<br><small>${detail}</small>` : msg;
+    logBox.innerHTML = `<div class="err">❌ <b>Erro:</b> ${fullMsg}</div>`;
+    console.error(`[ERROR] ${msg}`, detail);
+  };
+  
+  // Captura erros globais
+  window.addEventListener('error', e => {
+    logErr('Erro de script', e?.message || 'Erro desconhecido');
+  });
+  
+  window.addEventListener('unhandledrejection', e => {
+    logErr('Promise rejeitada', e?.reason || 'Erro desconhecido');
+  });
 
-  /* ===== Estado ===== */
+  /* ========================================
+     ESTADO GLOBAL DA APLICAÇÃO
+  ======================================== */
   let contacts = [];
   let filteredContactsIdx = [];
   let headers = [];
@@ -208,717 +715,1423 @@ document.addEventListener('DOMContentLoaded', () => {
   const groupedRowsByContact = new Map();
   const imageCacheByContact = new Map();
 
-  const el = (s)=>document.querySelector(s);
-  const normalizeKey = s => String(s||'').trim().toLowerCase();
-  const stripAccents = s => String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const equalsLoose = (a,b)=> stripAccents(a).trim().toLowerCase() === stripAccents(b).trim().toLowerCase();
-  const debounce = (fn,ms=250)=>{ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms)} };
+  /* ========================================
+     UTILITÁRIOS
+  ======================================== */
+  const el = (selector) => document.querySelector(selector);
+  const normalizeKey = (str) => String(str || '').trim().toLowerCase();
+  
+  const stripAccents = (str) => 
+    String(str || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  
+  const equalsLoose = (a, b) => 
+    stripAccents(a).trim().toLowerCase() === stripAccents(b).trim().toLowerCase();
+  
+  const debounce = (fn, ms = 250) => {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), ms);
+    };
+  };
+  
+  const titleCaseName = (name) => {
+    if (!name) return "Fulano";
+    return String(name)
+      .toLowerCase()
+      .replace(/(^|\s)([a-zá-ú])/g, (m, p1, p2) => p1 + p2.toUpperCase());
+  };
+  
+  const firstName = (name) => {
+    if (!name) return "Fulano";
+    const cleaned = String(name)
+      .trim()
+      .replace(/^(sr\.?|sra\.?|sr\(a\)\.?|dr\.?|dra\.?|prof\.?|profa\.?|mr\.?|mrs\.?|ms\.?)\s+/i, "");
+    const first = cleaned.split(/\s+/)[0] || "Fulano";
+    return first
+      .toLowerCase()
+      .replace(/(^|\s)([a-zá-ú])/g, (m, p1, p2) => p1 + p2.toUpperCase());
+  };
 
-  /* ===== Saudação personalizada ===== */
+  /* ========================================
+     SAUDAÇÃO PERSONALIZADA
+  ======================================== */
   const DEFAULT_GREETING = 'Olá {nome}, tudo bem?';
   const greetingInput = el('#greetingInput');
   const saveGreetingBtn = el('#saveGreeting');
 
-  function loadGreeting(){
-    const saved = localStorage.getItem('customGreeting');
-    greetingInput.value = saved && saved.trim() ? saved : DEFAULT_GREETING;
+  function loadGreeting() {
+    try {
+      const saved = localStorage.getItem('customGreeting');
+      greetingInput.value = saved && saved.trim() ? saved : DEFAULT_GREETING;
+    } catch (e) {
+      console.warn('Erro ao carregar saudação salva:', e);
+      greetingInput.value = DEFAULT_GREETING;
+    }
   }
-  function saveGreeting(){
-    const v = (greetingInput.value || '').trim() || DEFAULT_GREETING;
-    localStorage.setItem('customGreeting', v);
-    log('Saudação salva.');
-    updatePreview();
+
+  function saveGreeting() {
+    try {
+      const value = (greetingInput.value || '').trim() || DEFAULT_GREETING;
+      localStorage.setItem('customGreeting', value);
+      log('Saudação salva com sucesso!');
+      updatePreview();
+    } catch (e) {
+      logErr('Não foi possível salvar a saudação', e.message);
+    }
   }
-  function makeGreeting(contact){
-    const tpl = (greetingInput.value || DEFAULT_GREETING);
+
+  function makeGreeting(contact) {
+    const template = greetingInput.value || DEFAULT_GREETING;
     const nome = firstName(contact?.nome);
-    return tpl
+    return template
       .replace(/\{nome\}/gi, nome)
       .replace(/<\s*primeiro\s+nome\s*>/gi, nome);
   }
+
   loadGreeting();
   saveGreetingBtn.addEventListener('click', saveGreeting);
-  greetingInput.addEventListener('input', debounce(()=>updatePreview(),120));
+  greetingInput.addEventListener('input', debounce(() => updatePreview(), 150));
 
-  /* ===== Delimitadores robustos ===== */
-  function detectDelimiter(text){
-    const sample = text.split(/\r?\n/).slice(0,8).join('\n');
-    const count = ch => (sample.match(new RegExp('\\' + ch, 'g'))||[]).length;
+  /* ========================================
+     DETECÇÃO DE DELIMITADORES
+  ======================================== */
+  function detectDelimiter(text) {
+    const sample = text.split(/\r?\n/).slice(0, 10).join('\n');
+    
+    const countChar = (ch) => (sample.match(new RegExp('\\' + ch, 'g')) || []).length;
+    
     const scores = [
-      {d:'\t', n:count('\t')},
-      {d:';', n:count(';')},
-      {d:',', n:count(',')}
-    ].sort((a,b)=>b.n-a.n);
-    if (scores[0].n>0) return scores[0].d;
+      { delimiter: '\t', count: countChar('\t') },
+      { delimiter: ';', count: countChar(';') },
+      { delimiter: ',', count: countChar(',') }
+    ].sort((a, b) => b.count - a.count);
+    
+    if (scores[0].count > 0) return scores[0].delimiter;
+    
+    // Detectar múltiplos espaços
     return / {2,}/.test(sample) ? ' +' : '\t';
   }
-  function splitFlexible(line, sep){
-    if (sep === ' +') { return line.trim().split(/ {2,}/); }
-    return line.split(sep);
+
+  function splitFlexible(line, separator) {
+    if (separator === ' +') {
+      return line.trim().split(/ {2,}/);
+    }
+    return line.split(separator);
   }
 
-  /* ===== Campo 3: colagem/preview ===== */
+  /* ========================================
+     PROCESSAMENTO DE PLANILHA (CAMPO 3)
+  ======================================== */
   const sheetPaste = el('#sheetPaste');
   const sheetPreview = el('#sheetPreview');
-  sheetPaste.addEventListener('paste', ()=>{ setTimeout(refreshPreviewFromEditable,0); });
-  sheetPaste.addEventListener('keyup', debounce(refreshPreviewFromEditable, 200));
+  const sheetTitle = el('#sheetTitle');
+  const headerRowInput = el('#headerRow');
 
-  function tableFromAoA(aoa){
-    const tbl=document.createElement('table');
-    const thead=document.createElement('thead');
-    const tbody=document.createElement('tbody');
-    if(aoa.length){
-      const trh=document.createElement('tr');
-      aoa[0].forEach(c=>{ const th=document.createElement('th'); th.textContent=String(c||''); trh.appendChild(th); });
-      thead.appendChild(trh);
-      aoa.slice(1).forEach(r=>{
-        const tr=document.createElement('tr');
-        aoa[0].forEach((_,i)=>{ const td=document.createElement('td'); td.textContent=String(r[i]??''); tr.appendChild(td); });
-        tbody.appendChild(tr);
+  function tableFromArrayOfArrays(aoa) {
+    if (!aoa || !aoa.length) return document.createElement('table');
+    
+    const table = document.createElement('table');
+    const thead = document.createElement('thead');
+    const tbody = document.createElement('tbody');
+    
+    // Cabeçalho
+    const headerRow = document.createElement('tr');
+    aoa[0].forEach(cell => {
+      const th = document.createElement('th');
+      th.textContent = String(cell || '');
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    
+    // Corpo
+    aoa.slice(1).forEach(row => {
+      const tr = document.createElement('tr');
+      aoa[0].forEach((_, colIndex) => {
+        const td = document.createElement('td');
+        td.textContent = String(row[colIndex] ?? '');
+        tr.appendChild(td);
       });
-    }
-    tbl.appendChild(thead); tbl.appendChild(tbody);
-    return tbl;
+      tbody.appendChild(tr);
+    });
+    
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    return table;
   }
 
-  function extractFromEditable(container){
+  function extractFromEditable(container) {
+    // Verifica se há uma tabela HTML
     const table = container.querySelector('table');
-    if (table){
+    if (table) {
       const rows = Array.from(table.rows);
-      const aoa = rows.map(tr => Array.from(tr.cells).map(td => (td.innerText||'').trim()));
-      if (!aoa.length) return {headers:[], rowsAoA:[]};
+      const aoa = rows.map(tr => 
+        Array.from(tr.cells).map(td => (td.innerText || '').trim())
+      );
+      
+      if (!aoa.length) return { headers: [], rowsAoA: [] };
       return { headers: aoa[0], rowsAoA: aoa.slice(1) };
     }
-    const txt = container.innerText || '';
-    const lines = txt.split(/\r?\n/).filter(l=>l.trim().length);
-    if (!lines.length) return {headers:[], rowsAoA:[]};
-    const sep = detectDelimiter(txt);
-    const aoa = lines.map(l=> splitFlexible(l, sep).map(x=>String(x??'').trim()));
-    const maxCols = aoa.reduce((m,r)=>Math.max(m,r.length),0);
-    aoa.forEach(r=>{ while(r.length<maxCols) r.push(''); });
+    
+    // Caso contrário, processa como texto
+    const text = container.innerText || '';
+    const lines = text.split(/\r?\n/).filter(l => l.trim().length);
+    
+    if (!lines.length) return { headers: [], rowsAoA: [] };
+    
+    const separator = detectDelimiter(text);
+    const aoa = lines.map(line => 
+      splitFlexible(line, separator).map(x => String(x ?? '').trim())
+    );
+    
+    // Normalizar colunas
+    const maxCols = aoa.reduce((max, row) => Math.max(max, row.length), 0);
+    aoa.forEach(row => {
+      while (row.length < maxCols) row.push('');
+    });
+    
     return { headers: aoa[0], rowsAoA: aoa.slice(1) };
   }
 
-  function refreshPreviewFromEditable(){
-    const { headers: h, rowsAoA } = extractFromEditable(sheetPaste);
-    if (!h.length || !rowsAoA.length){
-      sheetPreview.style.display='none'; sheetPreview.innerHTML='';
-      return;
-    }
-    const aoa = [h, ...rowsAoA];
-    sheetPreview.innerHTML='';
-    sheetPreview.appendChild(tableFromAoA(aoa));
-    sheetPreview.style.display='block';
-  }
-
-  function showError(msg, detail){
-    const box = el('#errorBox');
-    if (box) box.innerHTML = `<div class="err"><strong>Erro:</strong> ${msg}${detail?`<br><small>${detail}</small>`:''}</div>`;
-  }
-  function showOk(msg){
-    const box = el('#errorBox');
-    if (box) box.innerHTML = `<div class="ok">${msg}</div>`;
-  }
-
-  el('#usePasted').addEventListener('click', ()=>{
-    try{
-      const { headers: h0, rowsAoA } = extractFromEditable(sheetPaste);
-      if(!rowsAoA.length || !h0.length){ showError('Nada para processar. Cole a planilha e tente de novo.'); return; }
-      const hdrRowInput = el('#headerRow').value.trim();
-      const aoaFull = [h0, ...rowsAoA];
-      let hdrIdx = 0;
-      if(hdrRowInput){
-        const n=parseInt(hdrRowInput,10);
-        if(Number.isInteger(n) && n>=1 && n<=aoaFull.length){ hdrIdx=n-1; }
+  function refreshPreviewFromEditable() {
+    try {
+      const { headers: h, rowsAoA } = extractFromEditable(sheetPaste);
+      
+      if (!h.length || !rowsAoA.length) {
+        sheetPreview.style.display = 'none';
+        sheetPreview.innerHTML = '';
+        return;
       }
-      const headersRow = aoaFull[hdrIdx] || aoaFull[0];
-      headers = headersRow.map(x=>String(x||'').trim());
-      const dataAoA = aoaFull.slice(hdrIdx+1).filter(r=> r.some(v=>String(v).trim()!==''));
-      rowsAll = dataAoA.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o; });
+      
+      const fullArray = [h, ...rowsAoA];
+      sheetPreview.innerHTML = '';
+      sheetPreview.appendChild(tableFromArrayOfArrays(fullArray));
+      sheetPreview.style.display = 'block';
+    } catch (e) {
+      console.error('Erro ao atualizar prévia:', e);
+    }
+  }
 
+  sheetPaste.addEventListener('paste', () => {
+    setTimeout(refreshPreviewFromEditable, 50);
+  });
+  
+  sheetPaste.addEventListener('keyup', debounce(refreshPreviewFromEditable, 300));
+
+  function showError(msg, detail = '') {
+    const box = el('#errorBox');
+    if (!box) return;
+    const fullMsg = detail ? `${msg}<br><small>${detail}</small>` : msg;
+    box.innerHTML = `<div class="err"><strong>❌ Erro:</strong> ${fullMsg}</div>`;
+  }
+
+  function showOk(msg) {
+    const box = el('#errorBox');
+    if (!box) return;
+    box.innerHTML = `<div class="ok">✅ ${msg}</div>`;
+  }
+
+  // Botão "Usar dados colados"
+  el('#usePasted').addEventListener('click', () => {
+    try {
+      const { headers: h0, rowsAoA } = extractFromEditable(sheetPaste);
+      
+      if (!rowsAoA.length || !h0.length) {
+        showError('Nada para processar. Cole a planilha e tente novamente.');
+        return;
+      }
+      
+      const hdrRowValue = headerRowInput.value.trim();
+      const fullArray = [h0, ...rowsAoA];
+      let headerIndex = 0;
+      
+      if (hdrRowValue) {
+        const num = parseInt(hdrRowValue, 10);
+        if (Number.isInteger(num) && num >= 1 && num <= fullArray.length) {
+          headerIndex = num - 1;
+        }
+      }
+      
+      const headersRow = fullArray[headerIndex] || fullArray[0];
+      headers = headersRow.map(x => String(x || '').trim());
+      
+      const dataArray = fullArray
+        .slice(headerIndex + 1)
+        .filter(row => row.some(value => String(value).trim() !== ''));
+      
+      rowsAll = dataArray.map(row => {
+        const obj = {};
+        headers.forEach((header, idx) => {
+          obj[header] = (row[idx] ?? '').toString().trim();
+        });
+        return obj;
+      });
+      
+      console.log('📊 Planilha processada:', { headers, rowsCount: rowsAll.length });
+      
       imageCacheByContact.clear();
       recountAndAutoselect();
-      el('#attachStats').textContent = `Planilha colada: ${rowsAll.length} linha(s) • ${headers.length} coluna(s)`;
-      el('#clearAttach').disabled = rowsAll.length===0;
-      el('#downloadZip').disabled = rowsAll.length===0;
-      showOk('Dados aplicados com sucesso.');
+      
+      const statsText = `Planilha: ${rowsAll.length} linha(s) • ${headers.length} coluna(s)`;
+      el('#attachStats').textContent = statsText;
+      el('#attachStats').className = 'badge success';
+      
+      el('#clearAttach').disabled = rowsAll.length === 0;
+      el('#downloadZip').disabled = rowsAll.length === 0;
+      
+      showOk('Dados aplicados com sucesso!');
       log('Planilha aplicada (Campo 3)');
       refreshPreviewFromEditable();
-    }catch(err){
-      console.error(err); showError('Falha ao processar a planilha colada.', err?.message || String(err)); logErr(err?.message||String(err));
+      
+    } catch (err) {
+      console.error('Erro ao processar planilha:', err);
+      showError('Falha ao processar a planilha colada', err?.message || String(err));
+      logErr('Erro ao processar planilha', err?.message || String(err));
     }
   });
 
-  el('#clearAttach').addEventListener('click', ()=>{
-    headers=[]; rowsAll=[]; groupedRowsByContact.clear(); imageCacheByContact.clear();
-    contacts.forEach(c=> c.attachCount=0);
-    el('#attachStats').textContent='Sem dados'; el('#errorBox').innerHTML='';
-    el('#clearAttach').disabled = true; el('#downloadZip').disabled = true;
-    if(sheetPreview){ sheetPreview.style.display='none'; sheetPreview.innerHTML=''; }
-    sheetPaste.innerHTML='';
-    renderContacts(); updatePreview();
+  // Botão "Limpar dados"
+  el('#clearAttach').addEventListener('click', () => {
+    headers = [];
+    rowsAll = [];
+    groupedRowsByContact.clear();
+    imageCacheByContact.clear();
+    
+    contacts.forEach(c => c.attachCount = 0);
+    
+    el('#attachStats').textContent = 'Sem dados';
+    el('#attachStats').className = 'badge warning';
+    el('#errorBox').innerHTML = '';
+    el('#clearAttach').disabled = true;
+    el('#downloadZip').disabled = true;
+    
+    if (sheetPreview) {
+      sheetPreview.style.display = 'none';
+      sheetPreview.innerHTML = '';
+    }
+    
+    sheetPaste.innerHTML = '';
+    renderContacts();
+    updatePreview();
     log('Planilha limpa');
   });
-
-  /* ===== Associação Linhas x Contatos ===== */
-  function recountAndAutoselect(){
+/* ========================================
+     ASSOCIAÇÃO LINHAS x CONTATOS
+  ======================================== */
+  function recountAndAutoselect() {
     groupedRowsByContact.clear();
-    const depCols = headers.filter(h=>{
-      const k=normalizeKey(h);
-      return k==='dependencia'||k==='dependência'||k.includes('depend');
+    
+    console.log('🔍 Iniciando associação...');
+    console.log('📋 Cabeçalhos da planilha:', headers);
+    console.log('👥 Total de contatos:', contacts.length);
+    console.log('📊 Total de linhas:', rowsAll.length);
+    
+    // Identificar colunas relevantes
+    const depCols = headers.filter(h => {
+      const k = normalizeKey(h);
+      return k === 'dependencia' || k === 'dependência' || k.includes('depend');
     });
-    const nameCols = headers.filter(h=>{
+    
+    const nameCols = headers.filter(h => {
       const k = normalizeKey(h);
       return k === 'nome' || k.includes('nome');
     });
-    const prefixCols = headers.filter(h=>{
+    
+    const prefixCols = headers.filter(h => {
       const k = normalizeKey(h);
-      return k.includes('prefix') || k.includes('agên') || k.includes('agen');
+      return k.includes('prefix') || k.includes('pref') || k.includes('agên') || k.includes('agen');
     });
-
-    contacts.forEach((c, idx)=>{
-      const rowsMatch = [];
-      const px = String(c.prefixo||'').trim();
-      const nomeContato = String(c.nome||'').trim();
-      for(const r of rowsAll){
+    
+    console.log('🏷️ Colunas reconhecidas:', {
+      prefixo: prefixCols,
+      nome: nameCols,
+      dependencia: depCols
+    });
+    
+    // Validação crítica
+    if (!prefixCols.length && !nameCols.length && !depCols.length) {
+      const msg = 'Nenhuma coluna reconhecida na planilha. Use: "prefixo/pref", "nome" ou "dependência"';
+      logErr(msg);
+      showError(msg, 'Verifique os nomes das colunas da planilha.');
+      return;
+    }
+    
+    let totalMatches = 0;
+    
+    // Associar cada contato
+    contacts.forEach((contact, idx) => {
+      const matchedRows = [];
+      const prefixo = String(contact.prefixo || '').trim();
+      const nomeContato = String(contact.nome || '').trim();
+      
+      for (const row of rowsAll) {
         let matched = false;
-        if(prefixCols.length){ for(const h of prefixCols){ if(equalsLoose(r[h]??'', px)){ matched = true; break; } } }
-        if(!matched && depCols.length){ for(const h of depCols){ if(equalsLoose(r[h]??'', nomeContato)){ matched = true; break; } } }
-        if(!matched && nameCols.length){ for(const h of nameCols){ if(equalsLoose(r[h]??'', nomeContato)){ matched = true; break; } } }
-        if(matched) rowsMatch.push(r);
+        
+        // 1. Tentar por prefixo
+        if (prefixCols.length && prefixo) {
+          for (const header of prefixCols) {
+            const cellValue = String(row[header] ?? '').trim();
+            if (equalsLoose(cellValue, prefixo)) {
+              matched = true;
+              console.log(`✅ Match por prefixo: ${contact.nome} (${prefixo}) ↔ ${header}="${cellValue}"`);
+              break;
+            }
+          }
+        }
+        
+        // 2. Tentar por dependência
+        if (!matched && depCols.length && nomeContato) {
+          for (const header of depCols) {
+            const cellValue = String(row[header] ?? '').trim();
+            if (equalsLoose(cellValue, nomeContato)) {
+              matched = true;
+              console.log(`✅ Match por dependência: ${nomeContato} ↔ ${header}="${cellValue}"`);
+              break;
+            }
+          }
+        }
+        
+        // 3. Tentar por nome
+        if (!matched && nameCols.length && nomeContato) {
+          for (const header of nameCols) {
+            const cellValue = String(row[header] ?? '').trim();
+            if (equalsLoose(cellValue, nomeContato)) {
+              matched = true;
+              console.log(`✅ Match por nome: ${nomeContato} ↔ ${header}="${cellValue}"`);
+              break;
+            }
+          }
+        }
+        
+        if (matched) {
+          matchedRows.push(row);
+          totalMatches++;
+        }
       }
-      groupedRowsByContact.set(idx, rowsMatch);
-      c.attachCount = rowsMatch.length;
-      if(rowsMatch.length>0) c.selected = true;
+      
+      groupedRowsByContact.set(idx, matchedRows);
+      contact.attachCount = matchedRows.length;
+      
+      // Auto-selecionar contatos com linhas
+      if (matchedRows.length > 0) {
+        contact.selected = true;
+      }
+      
+      if (matchedRows.length > 0) {
+        console.log(`📌 ${contact.nome}: ${matchedRows.length} linha(s) associada(s)`);
+      }
     });
-    renderContacts(); updatePreview();
+    
+    console.log(`📊 RESUMO: ${totalMatches} linha(s) associada(s) no total`);
+    log(`Associação concluída: ${totalMatches} linha(s) vinculada(s)`);
+    
+    renderContacts();
+    updatePreview();
   }
 
-  /* ===== Campo 1: Contatos (preferir “nome” exato) ===== */
-  function guessColumns(headersRow, rows){
-    const hnorm = headersRow.map(h=> normalizeKey(stripAccents(h)));
-    let iNome = hnorm.findIndex(h=> h === 'nome');
-    if (iNome < 0) iNome = hnorm.findIndex(h=> h.includes('nome'));
-    let iPrefixo = hnorm.findIndex(h=> /^(prefixo|pref|prefix|agencia|agência)$/.test(h));
-    let iEmail = hnorm.findIndex(h=> /^(email|e-mail|mail|contato|contact)$/.test(h));
-    if(iEmail<0){
-      for(let c=0;c<(rows[0]?.length||0); c++){
-        if(rows.some(r=>/@/.test(String(r[c]||'')))){ iEmail=c; break; }
+  /* ========================================
+     PROCESSAMENTO DE CONTATOS (CAMPO 1)
+  ======================================== */
+  function guessColumns(headersRow, dataRows) {
+    const normalized = headersRow.map(h => normalizeKey(stripAccents(h)));
+    
+    // Procurar "nome" exato primeiro
+    let iNome = normalized.findIndex(h => h === 'nome');
+    if (iNome < 0) {
+      iNome = normalized.findIndex(h => h.includes('nome'));
+    }
+    
+    // Prefixo
+    let iPrefixo = normalized.findIndex(h => 
+      /^(prefixo|pref|prefix|agencia|agência|agen)$/.test(h)
+    );
+    
+    // Email
+    let iEmail = normalized.findIndex(h => 
+      /^(email|e-mail|mail|contato|contact)$/.test(h)
+    );
+    
+    // Se não encontrou email por nome, procurar por padrão @
+    if (iEmail < 0 && dataRows.length > 0) {
+      for (let colIndex = 0; colIndex < (dataRows[0]?.length || 0); colIndex++) {
+        if (dataRows.some(row => /@/.test(String(row[colIndex] || '')))) {
+          iEmail = colIndex;
+          break;
+        }
       }
     }
-    return {iPrefixo, iNome, iEmail};
+    
+    return { iPrefixo, iNome, iEmail };
   }
 
-  function parseContacts(raw){
-    raw = (raw||"").trim(); if(!raw) return [];
-    const sep = detectDelimiter(raw);
-    const lines = raw.split(/\r?\n/).filter(l=>l.trim().length);
-    const aoa = lines.map(l=> splitFlexible(l, sep).map(x=>String(x??'').trim()));
-    const maxCols = aoa.reduce((m,r)=>Math.max(m,r.length),0);
-    aoa.forEach(r=>{ while(r.length<maxCols) r.push(''); });
-
-    let headersC = aoa[0];
-    let dataRows = aoa.slice(1);
-    let {iPrefixo, iNome, iEmail} = guessColumns(headersC, dataRows);
-
-    if (iPrefixo<0 || iNome<0 || iEmail<0){
-      headersC = Array.from({length:maxCols}, (_,i)=>`col${i+1}`);
-      dataRows = aoa;
-      const g = guessColumns(headersC, dataRows);
-      iPrefixo=g.iPrefixo; iNome=g.iNome; iEmail=g.iEmail;
+  function parseContacts(rawText) {
+    rawText = (rawText || '').trim();
+    if (!rawText) return [];
+    
+    const separator = detectDelimiter(rawText);
+    const lines = rawText.split(/\r?\n/).filter(l => l.trim().length);
+    
+    if (lines.length === 0) return [];
+    
+    const arrayOfArrays = lines.map(line => 
+      splitFlexible(line, separator).map(x => String(x ?? '').trim())
+    );
+    
+    const maxCols = arrayOfArrays.reduce((max, row) => Math.max(max, row.length), 0);
+    arrayOfArrays.forEach(row => {
+      while (row.length < maxCols) row.push('');
+    });
+    
+    let headersRow = arrayOfArrays[0];
+    let dataRows = arrayOfArrays.slice(1);
+    let { iPrefixo, iNome, iEmail } = guessColumns(headersRow, dataRows);
+    
+    // Se não encontrou colunas, tentar sem cabeçalho
+    if (iPrefixo < 0 || iNome < 0 || iEmail < 0) {
+      console.warn('⚠️ Colunas não identificadas no cabeçalho, tentando sem cabeçalho...');
+      headersRow = Array.from({ length: maxCols }, (_, i) => `col${i + 1}`);
+      dataRows = arrayOfArrays;
+      const guess = guessColumns(headersRow, dataRows);
+      iPrefixo = guess.iPrefixo;
+      iNome = guess.iNome;
+      iEmail = guess.iEmail;
     }
-
-    if(iPrefixo<0 || iNome<0 || iEmail<0){
-      alert('Não consegui identificar colunas de prefixo, nome (exato “nome”) e email. Verifique a primeira linha ou inclua cabeçalhos.');
+    
+    // Validação final
+    if (iPrefixo < 0 || iNome < 0 || iEmail < 0) {
+      alert('❌ Não foi possível identificar as colunas de prefixo, nome e email.\n\nVerifique se a primeira linha contém cabeçalhos ou se os dados estão formatados corretamente.');
+      console.error('Índices encontrados:', { iPrefixo, iNome, iEmail });
       return [];
     }
-
-    const data=[];
-    for(const row of dataRows){
-      const prefixo = String(row[iPrefixo]||'').trim();
-      const nome = String(row[iNome]||'').trim();
-      const email = String(row[iEmail]||'').trim();
+    
+    console.log('✅ Colunas identificadas:', { iPrefixo, iNome, iEmail });
+    
+    const parsedContacts = [];
+    for (const row of dataRows) {
+      const prefixo = String(row[iPrefixo] || '').trim();
+      const nome = String(row[iNome] || '').trim();
+      const email = String(row[iEmail] || '').trim();
+      
+      // Pular linhas vazias
       if (!nome && !email) continue;
-      data.push({ prefixo, nome, email, selected:false, attachCount:0 });
+      
+      parsedContacts.push({
+        prefixo,
+        nome,
+        email,
+        selected: false,
+        attachCount: 0
+      });
     }
-    return data;
+    
+    console.log(`✅ ${parsedContacts.length} contato(s) processado(s)`);
+    return parsedContacts;
   }
 
-  function renderContacts(){
-    const tbody = el('#contactsTable tbody'); if(!tbody) return;
-    tbody.innerHTML=''; filteredContactsIdx = [];
-    const q = normalizeKey(el('#searchBox').value);
-    contacts.forEach((c,i)=>{
-      const hay = normalizeKey(`${c.prefixo} ${c.nome} ${c.email}`);
-      if(q && !hay.includes(q)) return;
-      filteredContactsIdx.push(i);
-      const tr=document.createElement('tr');
+  function renderContacts() {
+    const tbody = el('#contactsTable tbody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    filteredContactsIdx = [];
+    
+    const searchQuery = normalizeKey(el('#searchBox').value);
+    
+    contacts.forEach((contact, index) => {
+      const searchableText = normalizeKey(
+        `${contact.prefixo} ${contact.nome} ${contact.email}`
+      );
+      
+      // Filtrar por busca
+      if (searchQuery && !searchableText.includes(searchQuery)) return;
+      
+      filteredContactsIdx.push(index);
+      
+      const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td><input type="checkbox" data-idx="${i}" ${c.selected?'checked':''}></td>
-        <td>${c.prefixo||''}</td>
-        <td>${c.nome||''}</td>
-        <td>${c.email||''}</td>
-        <td><span class="badge">${c.attachCount||0}</span></td>
+        <td><input type="checkbox" data-idx="${index}" ${contact.selected ? 'checked' : ''}></td>
+        <td>${contact.prefixo || '—'}</td>
+        <td><strong>${contact.nome || '—'}</strong></td>
+        <td>${contact.email || '—'}</td>
+        <td><span class="badge ${contact.attachCount > 0 ? 'success' : ''}">${contact.attachCount || 0}</span></td>
       `;
       tbody.appendChild(tr);
     });
-    el('#contactStats').textContent = `${contacts.length} contato${contacts.length===1?'':'s'} • ${filteredContactsIdx.length} exibido${filteredContactsIdx.length===1?'':'s'}`;
-    const allSelected = filteredContactsIdx.length>0 && filteredContactsIdx.every(i=>contacts[i]?.selected);
-    const someSelected = filteredContactsIdx.some(i=>contacts[i]?.selected);
+    
+    // Atualizar estatísticas
+    const total = contacts.length;
+    const shown = filteredContactsIdx.length;
+    const selected = contacts.filter(c => c.selected).length;
+    
+    el('#contactStats').textContent = `${total} contato${total !== 1 ? 's' : ''} • ${shown} exibido${shown !== 1 ? 's' : ''} • ${selected} selecionado${selected !== 1 ? 's' : ''}`;
+    
+    // Atualizar "Selecionar todos"
+    const allSelected = filteredContactsIdx.length > 0 && 
+                        filteredContactsIdx.every(i => contacts[i]?.selected);
+    const someSelected = filteredContactsIdx.some(i => contacts[i]?.selected);
+    
     const selectAll = el('#selectAll');
-    if(selectAll){
+    if (selectAll) {
       selectAll.checked = allSelected;
       selectAll.indeterminate = !allSelected && someSelected;
     }
   }
 
-  function saveContactsIfEnabled(){
-    if(el('#keepContacts').checked){
-      localStorage.setItem('savedContactsRaw', el('#contactsInput').value || '');
-      localStorage.setItem('keepContacts', '1');
-    } else {
-      localStorage.removeItem('savedContactsRaw');
-      localStorage.setItem('keepContacts', '0');
+  function saveContactsIfEnabled() {
+    try {
+      if (el('#keepContacts').checked) {
+        localStorage.setItem('savedContactsRaw', el('#contactsInput').value || '');
+        localStorage.setItem('keepContacts', '1');
+        console.log('💾 Contatos salvos localmente');
+      } else {
+        localStorage.removeItem('savedContactsRaw');
+        localStorage.setItem('keepContacts', '0');
+        console.log('🗑️ Contatos removidos do armazenamento');
+      }
+    } catch (e) {
+      console.warn('⚠️ Não foi possível salvar/remover contatos:', e);
     }
   }
 
-  function loadSavedContactsOnStart(){
-    const keep = localStorage.getItem('keepContacts') === '1'; el('#keepContacts').checked = keep;
-    const saved = localStorage.getItem('savedContactsRaw') || '';
-    if(keep && saved){
-      el('#contactsInput').value = saved;
-      const data = parseContacts(saved);
-      if(data.length){ contacts = data; renderContacts(); }
+  function loadSavedContactsOnStart() {
+    try {
+      const keepEnabled = localStorage.getItem('keepContacts') === '1';
+      el('#keepContacts').checked = keepEnabled;
+      
+      if (keepEnabled) {
+        const saved = localStorage.getItem('savedContactsRaw') || '';
+        if (saved) {
+          el('#contactsInput').value = saved;
+          const parsed = parseContacts(saved);
+          if (parsed.length) {
+            contacts = parsed;
+            renderContacts();
+            log('Contatos carregados do armazenamento local');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('⚠️ Erro ao carregar contatos salvos:', e);
     }
   }
+
   loadSavedContactsOnStart();
 
+  // Event listeners do Campo 1
   el('#keepContacts').addEventListener('change', saveContactsIfEnabled);
-  el('#loadContacts').addEventListener('click', ()=>{
-    const raw = el('#contactsInput').value;
-    const data = parseContacts(raw);
-    if(!data.length) { log('Nenhum contato válido'); renderContacts(); return; }
-    contacts = data; recountAndAutoselect(); renderContacts(); saveContactsIfEnabled();
-    log('Contatos carregados (Campo 1)');
+
+  el('#loadContacts').addEventListener('click', () => {
+    const rawText = el('#contactsInput').value;
+    const parsed = parseContacts(rawText);
+    
+    if (!parsed.length) {
+      log('Nenhum contato válido encontrado', 'warn');
+      renderContacts();
+      return;
+    }
+    
+    contacts = parsed;
+    recountAndAutoselect();
+    renderContacts();
+    saveContactsIfEnabled();
+    log(`${parsed.length} contato(s) carregado(s) com sucesso!`);
   });
-  el('#clearContacts').addEventListener('click', ()=>{
-    contacts=[]; el('#contactsInput').value=''; renderContacts(); el('#output').innerHTML=''; saveContactsIfEnabled();
+
+  el('#clearContacts').addEventListener('click', () => {
+    contacts = [];
+    el('#contactsInput').value = '';
+    renderContacts();
+    el('#output').innerHTML = '';
+    saveContactsIfEnabled();
     log('Contatos limpos');
   });
-  el('#contactsTable').addEventListener('change', e=>{
-    if(e.target.matches('input[type="checkbox"][data-idx]')){
-      const i=Number(e.target.getAttribute('data-idx'));
-      if(!Number.isNaN(i) && contacts[i]) contacts[i].selected = e.target.checked;
+
+  el('#contactsTable').addEventListener('change', e => {
+    if (e.target.matches('input[type="checkbox"][data-idx]')) {
+      const idx = Number(e.target.getAttribute('data-idx'));
+      if (!Number.isNaN(idx) && contacts[idx]) {
+        contacts[idx].selected = e.target.checked;
+      }
       renderContacts();
       updatePreview();
     }
   });
-  el('#selectAll').addEventListener('change', e=>{
-    const check = e.target.checked;
-    filteredContactsIdx.forEach(i=>{ if(contacts[i]) contacts[i].selected = check; });
-    renderContacts(); updatePreview();
-  });
-  el('#searchBox').addEventListener('input', debounce(()=>{ renderContacts(); updatePreview(); },150));
 
-  /* ===== Campo 2: Editor ===== */
+  el('#selectAll').addEventListener('change', e => {
+    const shouldCheck = e.target.checked;
+    filteredContactsIdx.forEach(idx => {
+      if (contacts[idx]) {
+        contacts[idx].selected = shouldCheck;
+      }
+    });
+    renderContacts();
+    updatePreview();
+  });
+
+  el('#searchBox').addEventListener('input', debounce(() => {
+    renderContacts();
+    updatePreview();
+  }, 200));
+/* ========================================
+     EDITOR DE MENSAGENS (CAMPO 2)
+  ======================================== */
   const messageBody = el('#messageBody');
-  document.querySelectorAll('.rte-btn[data-cmd]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const cmd = btn.getAttribute('data-cmd');
-      document.execCommand(cmd, false, null);
+
+  // Botões de formatação
+  document.querySelectorAll('.rte-btn[data-cmd]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const command = btn.getAttribute('data-cmd');
+      document.execCommand(command, false, null);
       messageBody.focus();
+      
+      // Visual feedback
+      btn.classList.add('active');
+      setTimeout(() => btn.classList.remove('active'), 200);
+      
       updatePreviewDebounced();
     });
   });
-  messageBody.addEventListener('paste', (e)=>{
+
+  // Prevenir colagem de HTML formatado
+  messageBody.addEventListener('paste', e => {
     e.preventDefault();
     const text = (e.clipboardData || window.clipboardData).getData('text/plain');
     document.execCommand('insertText', false, text);
   });
-  function sanitizeEditorHTML(html){
-    const allowed = new Set(['B','STRONG','I','EM','U','BR','P']);
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    (function walk(node){
+
+  // Sanitizar HTML do editor
+  function sanitizeEditorHTML(html) {
+    const allowedTags = new Set(['B', 'STRONG', 'I', 'EM', 'U', 'BR', 'P']);
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    function walkAndClean(node) {
       const children = Array.from(node.childNodes);
-      for(const ch of children){
-        if(ch.nodeType === 1){
-          if(!allowed.has(ch.tagName)){
-            while(ch.firstChild) node.insertBefore(ch.firstChild, ch);
-            node.removeChild(ch);
-          }else{
-            [...ch.attributes].forEach(a=>{ ch.removeAttribute(a.name); });
-            walk(ch);
+      for (const child of children) {
+        if (child.nodeType === 1) { // Element node
+          if (!allowedTags.has(child.tagName)) {
+            // Remover tag mas manter conteúdo
+            while (child.firstChild) {
+              node.insertBefore(child.firstChild, child);
+            }
+            node.removeChild(child);
+          } else {
+            // Remover todos os atributos
+            [...child.attributes].forEach(attr => {
+              child.removeAttribute(attr.name);
+            });
+            walkAndClean(child);
           }
         }
       }
-    })(tmp);
-    tmp.querySelectorAll('div').forEach(d=>{
-      const p = document.createElement('p'); p.innerHTML = d.innerHTML; d.replaceWith(p);
+    }
+    
+    walkAndClean(tempDiv);
+    
+    // Converter DIVs em parágrafos
+    tempDiv.querySelectorAll('div').forEach(div => {
+      const p = document.createElement('p');
+      p.innerHTML = div.innerHTML;
+      div.replaceWith(p);
     });
-    return tmp.innerHTML.replace(/&nbsp;/g,' ').replace(/<p>\s*<\/p>/g,'');
+    
+    return tempDiv.innerHTML
+      .replace(/&nbsp;/g, ' ')
+      .replace(/<p>\s*<\/p>/g, '');
   }
-  function getEditorHTMLClean(){
+
+  function getEditorHTMLClean() {
     const raw = messageBody.innerHTML || '';
     const clean = sanitizeEditorHTML(raw);
     return clean.trim();
   }
-  const updatePreviewDebounced = debounce(()=>updatePreview(),120);
 
-  /* ===== Helpers de texto/imagem ===== */
-  const titleCaseName = (name)=> !name ? "Fulano" : String(name).toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase());
-  const firstName = (name)=>{
-    if(!name) return "Fulano";
-    const cleaned = String(name).trim().replace(/^(sr\.?|sra\.?|sr\(a\)\.?|dr\.?|dra\.?|prof\.?|profa\.?|mr\.?|mrs\.?|ms\.?)\s+/i, "");
-    const first = cleaned.split(/\s+/)[0] || "Fulano";
-    return first.toLowerCase().replace(/(^|\s)([a-zá-ú])/g,(m,p1,p2)=>p1+p2.toUpperCase());
-  };
+  const updatePreviewDebounced = debounce(() => updatePreview(), 150);
 
-  async function buildPrintForContact(idx){
-    const titulo = el('#sheetTitle').value.trim() || 'Planilha';
-    const rows = groupedRowsByContact.get(idx) || [];
-    if(!headers.length || !rows.length) return null;
+  messageBody.addEventListener('input', updatePreviewDebounced);
+  messageBody.addEventListener('keyup', updatePreviewDebounced);
 
-    const padX = 14, padY = 10, gapTitle = 10, rowH = 28, headerH = 30, border = 1;
-    const font = '12px Segoe UI, Roboto, Arial, sans-serif';
-    const fontBold = '600 12px Segoe UI, Roboto, Arial, sans-serif';
-    const titleFont = '600 16px Segoe UI, Roboto, Arial, sans-serif';
-
-    const tmp = document.createElement('canvas');
-    const ctx = tmp.getContext('2d');
-    ctx.font = font;
-    const colW = headers.map(h=>{
-      let w = ctx.measureText(h).width + 20;
-      rows.forEach(r=>{ w = Math.max(w, ctx.measureText(String(r[h]??'')).width + 20); });
-      return Math.min(Math.max(80, Math.ceil(w)), 360);
+  /* ========================================
+     GERAÇÃO DE PRINTS (CANVAS)
+  ======================================== */
+  async function buildPrintForContact(contactIndex) {
+    const titulo = sheetTitle.value.trim() || 'Planilha';
+    const rows = groupedRowsByContact.get(contactIndex) || [];
+    
+    if (!headers.length || !rows.length) {
+      console.warn(`⚠️ Sem dados para gerar print do contato ${contactIndex}`);
+      return null;
+    }
+    
+    console.log(`🎨 Gerando print para contato ${contactIndex}...`);
+    
+    // Configurações visuais
+    const padX = 16;
+    const padY = 12;
+    const gapTitle = 12;
+    const rowHeight = 30;
+    const headerHeight = 32;
+    const borderWidth = 1;
+    
+    const fontRegular = '13px Segoe UI, Roboto, Arial, sans-serif';
+    const fontBold = '600 13px Segoe UI, Roboto, Arial, sans-serif';
+    const fontTitle = '600 17px Segoe UI, Roboto, Arial, sans-serif';
+    
+    // Canvas temporário para medições
+    const tempCanvas = document.createElement('canvas');
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.font = fontRegular;
+    
+    // Calcular larguras das colunas
+    const columnWidths = headers.map(header => {
+      let maxWidth = tempCtx.measureText(header).width + 24;
+      
+      rows.forEach(row => {
+        const cellText = String(row[header] ?? '');
+        const textWidth = tempCtx.measureText(cellText).width + 24;
+        maxWidth = Math.max(maxWidth, textWidth);
+      });
+      
+      // Limitar largura das colunas
+      return Math.min(Math.max(90, Math.ceil(maxWidth)), 380);
     });
-    const tableW = colW.reduce((a,b)=>a+b,0) + border*(headers.length+1);
-    const tableH = headerH + rows.length*rowH + border*(rows.length+1);
-    const titleH = 24;
-    const totalW = Math.ceil(padX*2 + tableW);
-    const totalH = Math.ceil(padY*2 + titleH + gapTitle + tableH);
-
-    // Render base
-    tmp.width = totalW; tmp.height = totalH;
-    ctx.fillStyle = '#ffffff'; ctx.fillRect(0,0,totalW,totalH);
-    ctx.font = titleFont; ctx.fillStyle = '#0f172a';
-    ctx.fillText(titulo, padX, padY + 18);
-
-    let x = padX, y = padY + titleH + gapTitle;
-    ctx.font = font;
-    ctx.fillStyle = '#f8fafc'; ctx.fillRect(x, y, tableW, headerH);
-    ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = border;
-
+    
+    const tableWidth = columnWidths.reduce((sum, w) => sum + w, 0) + 
+                       borderWidth * (headers.length + 1);
+    const tableHeight = headerHeight + rows.length * rowHeight + 
+                        borderWidth * (rows.length + 1);
+    const titleHeight = 26;
+    
+    const totalWidth = Math.ceil(padX * 2 + tableWidth);
+    const totalHeight = Math.ceil(padY * 2 + titleHeight + gapTitle + tableHeight);
+    
+    // Canvas principal
+    const canvas = document.createElement('canvas');
+    canvas.width = totalWidth;
+    canvas.height = totalHeight;
+    const ctx = canvas.getContext('2d');
+    
+    // Fundo branco
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, totalWidth, totalHeight);
+    
+    // Título
+    ctx.font = fontTitle;
+    ctx.fillStyle = '#0f172a';
+    ctx.fillText(titulo, padX, padY + 20);
+    
+    // Posição inicial da tabela
+    let x = padX;
+    let y = padY + titleHeight + gapTitle;
+    
+    // Fundo do cabeçalho
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(x, y, tableWidth, headerHeight);
+    
+    // Bordas
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = borderWidth;
+    
+    // Linhas horizontais
     ctx.beginPath();
-    ctx.moveTo(x, y); ctx.lineTo(x+tableW, y);
-    ctx.moveTo(x, y+headerH); ctx.lineTo(x+tableW, y+headerH);
-    for(let i=1;i<=rows.length;i++){
-      const yy = y + headerH + i*rowH;
-      ctx.moveTo(x, yy); ctx.lineTo(x+tableW, yy);
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + tableWidth, y);
+    ctx.moveTo(x, y + headerHeight);
+    ctx.lineTo(x + tableWidth, y + headerHeight);
+    
+    for (let i = 1; i <= rows.length; i++) {
+      const lineY = y + headerHeight + i * rowHeight;
+      ctx.moveTo(x, lineY);
+      ctx.lineTo(x + tableWidth, lineY);
     }
     ctx.stroke();
-
-    let cx = x;
-    for(let c=0;c<=headers.length;c++){
-      ctx.beginPath(); ctx.moveTo(cx, y); ctx.lineTo(cx, y + headerH + rows.length*rowH); ctx.stroke();
-      cx += colW[c]||0;
+    
+    // Linhas verticais
+    ctx.beginPath();
+    let currentX = x;
+    for (let i = 0; i <= headers.length; i++) {
+      ctx.moveTo(currentX, y);
+      ctx.lineTo(currentX, y + headerHeight + rows.length * rowHeight);
+      currentX += columnWidths[i] || 0;
     }
-
-    ctx.fillStyle = '#111827'; ctx.font = fontBold;
-    let rx = x + border + 8;
-    headers.forEach((h,i)=>{ ctx.fillText(String(h), rx, y + 20); rx += colW[i]; });
-
-    ctx.font = font; ctx.fillStyle = '#111827';
-    let ry = y + headerH + 20;
-    rows.forEach(r=>{
-      let rxx = x + border + 8;
-      headers.forEach((h,i)=>{ ctx.fillText(String(r[h]??''), rxx, ry); rxx += colW[i]; });
-      ry += rowH;
+    ctx.stroke();
+    
+    // Renderizar cabeçalho
+    ctx.font = fontBold;
+    ctx.fillStyle = '#111827';
+    let headerX = x + borderWidth + 10;
+    
+    headers.forEach((header, colIndex) => {
+      ctx.fillText(String(header), headerX, y + 22);
+      headerX += columnWidths[colIndex];
     });
-
-    // Tamanho visual alvo (mantido), mas dobramos a resolução (100% a mais de pixels)
-    const targetW = Math.min(520, totalW);
-    const scale = targetW / totalW;
-    const targetH = Math.round(totalH * scale);
-
-    // *** ALTERAÇÃO: aumentar resolução em 100% (UPSCALE = 2) ***
-    const UPSCALE = 2; // 2x pixels = +100% resolução
-    const small = document.createElement('canvas');
-    small.width = Math.round(targetW * UPSCALE);
-    small.height = Math.round(targetH * UPSCALE);
-    const c2 = small.getContext('2d');
-    c2.imageSmoothingEnabled = true;
-    c2.imageSmoothingQuality = 'high';
-    // desenha já no tamanho final upscalado (mantém nitidez ao reduzir no CSS/visual)
-    c2.drawImage(tmp, 0, 0, small.width, small.height);
-
-    return new Promise(resolve=>{
-      small.toBlob(blob=>{
-        if(!blob) return resolve(null);
-        const dataUrl = small.toDataURL('image/png');
+    
+    // Renderizar linhas de dados
+    ctx.font = fontRegular;
+    ctx.fillStyle = '#111827';
+    let rowY = y + headerHeight + 22;
+    
+    rows.forEach(row => {
+      let cellX = x + borderWidth + 10;
+      
+      headers.forEach((header, colIndex) => {
+        const cellValue = String(row[header] ?? '');
+        ctx.fillText(cellValue, cellX, rowY);
+        cellX += columnWidths[colIndex];
+      });
+      
+      rowY += rowHeight;
+    });
+    
+    // Redimensionar para melhor qualidade
+    const targetWidth = Math.min(560, totalWidth);
+    const scale = targetWidth / totalWidth;
+    const targetHeight = Math.round(totalHeight * scale);
+    
+    // UPSCALE: 2x resolução (100% mais pixels)
+    const UPSCALE_FACTOR = 2;
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = Math.round(targetWidth * UPSCALE_FACTOR);
+    finalCanvas.height = Math.round(targetHeight * UPSCALE_FACTOR);
+    
+    const finalCtx = finalCanvas.getContext('2d');
+    finalCtx.imageSmoothingEnabled = true;
+    finalCtx.imageSmoothingQuality = 'high';
+    finalCtx.drawImage(canvas, 0, 0, finalCanvas.width, finalCanvas.height);
+    
+    return new Promise(resolve => {
+      finalCanvas.toBlob(blob => {
+        if (!blob) {
+          console.error('❌ Falha ao gerar blob da imagem');
+          return resolve(null);
+        }
+        
+        const dataUrl = finalCanvas.toDataURL('image/png', 0.95);
+        console.log(`✅ Print gerado: ${Math.round(blob.size / 1024)}KB`);
         resolve({ blob, dataUrl });
       }, 'image/png', 0.95);
     });
   }
 
-  function buildMessageHTML(contact, dataUrl, bodyHTMLClean){
-    const introText = makeGreeting(contact);
-    const intro = `<p>${introText}</p>`;
-    const content = bodyHTMLClean ? bodyHTMLClean : '';
-    const imgHTML = dataUrl ? `<div class="separator"></div><div class="imgwrap"><img src="${dataUrl}" alt="print da planilha"></div>` : '';
-    return `<div class="richmsg">${intro}${content}${imgHTML}</div>`;
-  }
-  function htmlToPlainText(html){
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return (tmp.textContent || tmp.innerText || '').trim();
-  }
-  function buildMessagePlainText(contact, bodyHTMLClean){
-    const intro = makeGreeting(contact);
-    const bodyTxt = htmlToPlainText(bodyHTMLClean || '');
-    const partBody = bodyTxt ? `\n\n${bodyTxt}` : '';
-    return `${intro}${partBody}`;
+  /* ========================================
+     CONSTRUÇÃO DE MENSAGENS
+  ======================================== */
+  function buildMessageHTML(contact, imageDataUrl, bodyHTMLClean) {
+    const greeting = makeGreeting(contact);
+    const introHTML = `<p>${greeting}</p>`;
+    const contentHTML = bodyHTMLClean ? bodyHTMLClean : '';
+    
+    const imageHTML = imageDataUrl 
+      ? `<div class="separator"></div><div class="imgwrap"><img src="${imageDataUrl}" alt="print da planilha"></div>` 
+      : '';
+    
+    return `<div class="richmsg">${introHTML}${contentHTML}${imageHTML}</div>`;
   }
 
-  async function updatePreview(){
-    const box = el('#previewBox');
+  function htmlToPlainText(html) {
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    return (tempDiv.textContent || tempDiv.innerText || '').trim();
+  }
+
+  function buildMessagePlainText(contact, bodyHTMLClean) {
+    const greeting = makeGreeting(contact);
+    const bodyText = htmlToPlainText(bodyHTMLClean || '');
+    const bodyPart = bodyText ? `\n\n${bodyText}` : '';
+    return `${greeting}${bodyPart}`;
+  }
+
+  /* ========================================
+     PREVIEW (CAMPO 2)
+  ======================================== */
+  async function updatePreview() {
+    const previewBox = el('#previewBox');
+    if (!previewBox) return;
+    
     const bodyHTMLClean = getEditorHTMLClean();
-    let idx = contacts.findIndex(c=>c.selected); if(idx<0) idx = contacts.length?0:-1;
-    if(idx<0){
-      const previewIntro = (greetingInput.value || DEFAULT_GREETING).replace(/\{nome\}/gi,'Fulano');
-      box.innerHTML = `<div class="richmsg"><p>${previewIntro}</p><p class="muted">[sua mensagem]</p></div><div class="separator"></div><div class="imgwrap"><div class="muted">[Imagem do print aparecerá aqui]</div></div>`;
+    
+    // Encontrar primeiro contato selecionado
+    let contactIndex = contacts.findIndex(c => c.selected);
+    if (contactIndex < 0) {
+      contactIndex = contacts.length > 0 ? 0 : -1;
+    }
+    
+    if (contactIndex < 0) {
+      const previewGreeting = (greetingInput.value || DEFAULT_GREETING)
+        .replace(/\{nome\}/gi, 'Fulano');
+      previewBox.innerHTML = `
+        <div class="richmsg">
+          <p>${previewGreeting}</p>
+          <p class="muted">[sua mensagem]</p>
+        </div>
+        <div class="separator"></div>
+        <div class="imgwrap">
+          <div class="muted">[Imagem do print aparecerá aqui]</div>
+        </div>
+      `;
       return;
     }
-    let img = imageCacheByContact.get(idx);
-    if(!img){ img = await buildPrintForContact(idx); imageCacheByContact.set(idx, img); }
-    const html = buildMessageHTML(contacts[idx], img?.dataUrl || '', bodyHTMLClean);
-    box.innerHTML = html;
+    
+    // Gerar ou recuperar imagem do cache
+    let imageData = imageCacheByContact.get(contactIndex);
+    if (!imageData) {
+      imageData = await buildPrintForContact(contactIndex);
+      if (imageData) {
+        imageCacheByContact.set(contactIndex, imageData);
+      }
+    }
+    
+    const html = buildMessageHTML(
+      contacts[contactIndex], 
+      imageData?.dataUrl || '', 
+      bodyHTMLClean
+    );
+    
+    previewBox.innerHTML = html;
   }
-  messageBody.addEventListener('input', updatePreview);
-  messageBody.addEventListener('keyup', updatePreview);
 
-  async function copyMessage(htmlMsg, textMsg, imgBlob){
-    if (navigator.clipboard && window.ClipboardItem){
-      try{
-        const itemData = { 'text/html': new Blob([htmlMsg], {type:'text/html'}), 'text/plain': new Blob([textMsg], {type:'text/plain'}) };
-        if(imgBlob){ itemData['image/png'] = imgBlob; }
-        await navigator.clipboard.write([ new ClipboardItem(itemData) ]);
+  /* ========================================
+     CÓPIA PARA ÁREA DE TRANSFERÊNCIA
+  ======================================== */
+  async function copyMessage(htmlMsg, textMsg, imageBlob) {
+    // Tentar Clipboard API moderna (com imagem)
+    if (navigator.clipboard && window.ClipboardItem) {
+      try {
+        const itemData = {
+          'text/html': new Blob([htmlMsg], { type: 'text/html' }),
+          'text/plain': new Blob([textMsg], { type: 'text/plain' })
+        };
+        
+        if (imageBlob) {
+          itemData['image/png'] = imageBlob;
+        }
+        
+        await navigator.clipboard.write([new ClipboardItem(itemData)]);
+        console.log('✅ Copiado com Clipboard API (HTML + imagem)');
         return 'html';
-      }catch(e){}
+      } catch (e) {
+        console.warn('⚠️ Clipboard API falhou, tentando fallback:', e);
+      }
     }
-    const div = document.createElement('div');
-    div.contentEditable = 'true';
-    div.style.position='fixed'; div.style.left='-99999px'; div.style.top='0'; div.style.opacity='0';
-    div.innerHTML = htmlMsg;
-    document.body.appendChild(div);
-    const range = document.createRange(); range.selectNodeContents(div);
-    const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
-    const ok = document.execCommand('copy');
-    sel.removeAllRanges(); div.remove();
-    if (ok) return 'html';
-    await navigator.clipboard.writeText(textMsg);
-    return 'text';
+    
+    // Fallback: copiar HTML via execCommand
+    const tempDiv = document.createElement('div');
+    tempDiv.contentEditable = 'true';
+    tempDiv.style.position = 'fixed';
+    tempDiv.style.left = '-99999px';
+    tempDiv.style.top = '0';
+    tempDiv.style.opacity = '0';
+    tempDiv.innerHTML = htmlMsg;
+    
+    document.body.appendChild(tempDiv);
+    
+    const range = document.createRange();
+    range.selectNodeContents(tempDiv);
+    
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    
+    const success = document.execCommand('copy');
+    
+    selection.removeAllRanges();
+    tempDiv.remove();
+    
+    if (success) {
+      console.log('✅ Copiado com execCommand (HTML sem imagem)');
+      return 'html';
+    }
+    
+    // Último recurso: apenas texto
+    try {
+      await navigator.clipboard.writeText(textMsg);
+      console.log('✅ Copiado apenas texto');
+      return 'text';
+    } catch (e) {
+      console.error('❌ Falha ao copiar:', e);
+      return 'error';
+    }
+  }
+/* ========================================
+     TEAMS DEEP LINKS
+  ======================================== */
+  function teamsDeepLinkBase(email) {
+    return 'https://teams.microsoft.com/l/chat/0/0?users=' + encodeURIComponent(email);
   }
 
-  function setCollapsed(wrap, collapsed){
-    if(collapsed){
-      wrap.classList.add('collapsed');
-      const btn = wrap.querySelector('[data-toggle]'); if(btn) btn.textContent = 'Expandir';
-    }else{
-      wrap.classList.remove('collapsed');
-      const btn = wrap.querySelector('[data-toggle]'); if(btn) btn.textContent = 'Recolher';
-    }
+  function teamsDeepLinkWithMessage(email, messageText) {
+    const base = teamsDeepLinkBase(email);
+    return messageText ? base + '&message=' + encodeURIComponent(messageText) : base;
   }
 
-  /* ===== TEAMS deep links ===== */
-  const teamsDeepLinkBase = (email)=> 'https://teams.microsoft.com/l/chat/0/0?users=' + encodeURIComponent(email);
-  const teamsDeepLinkWithMessage = (email, messageText)=> teamsDeepLinkBase(email) + (messageText ? '&message=' + encodeURIComponent(messageText) : '');
-  function openTeamsChatNoPrefill(email){
-    if(!email){ alert('Contato sem e-mail.'); return; }
-    const url = teamsDeepLinkBase(email); // sem mensagem pré-carregada
-    window.open(url, '_blank', 'noopener');
+  function openTeamsChatNoPrefill(email) {
+    if (!email) {
+      alert('❌ Contato sem e-mail.');
+      return;
+    }
+    const url = teamsDeepLinkBase(email);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    console.log(`🔗 Teams aberto: ${email}`);
   }
-  function openTeamsChatWithMessage(email, messageText){
-    if(!email){ alert('Contato sem e-mail.'); return; }
+
+  function openTeamsChatWithMessage(email, messageText) {
+    if (!email) {
+      alert('❌ Contato sem e-mail.');
+      return;
+    }
     const url = teamsDeepLinkWithMessage(email, messageText || '');
-    window.open(url, '_blank', 'noopener');
+    window.open(url, '_blank', 'noopener,noreferrer');
+    console.log(`🔗 Teams aberto com mensagem: ${email}`);
   }
 
-  function buildAndMountCardForIdx(idx, bodyHTMLClean){
-    const c = contacts[idx];
-    const img = imageCacheByContact.get(idx) || null;
-    const htmlMsg = buildMessageHTML(c, img?.dataUrl || '', bodyHTMLClean);
-    const textMsg = buildMessagePlainText(c, bodyHTMLClean);
+  /* ========================================
+     COLAPSAR/EXPANDIR MENSAGENS
+  ======================================== */
+  function setCollapsed(wrapperElement, shouldCollapse) {
+    if (shouldCollapse) {
+      wrapperElement.classList.add('collapsed');
+      const btn = wrapperElement.querySelector('[data-toggle]');
+      if (btn) btn.textContent = '👁️ Expandir';
+    } else {
+      wrapperElement.classList.remove('collapsed');
+      const btn = wrapperElement.querySelector('[data-toggle]');
+      if (btn) btn.textContent = '👁️ Recolher';
+    }
+  }
 
-    const wrap = document.createElement('div');
-    wrap.className='msg';
-    wrap.innerHTML = `
+  /* ========================================
+     GERAR CARDS DE MENSAGEM (CAMPO 4)
+  ======================================== */
+  async function buildAndMountCardForContact(contactIndex, bodyHTMLClean) {
+    const contact = contacts[contactIndex];
+    
+    // Garantir que a imagem existe
+    let imageData = imageCacheByContact.get(contactIndex);
+    if (!imageData) {
+      imageData = await buildPrintForContact(contactIndex);
+      if (imageData) {
+        imageCacheByContact.set(contactIndex, imageData);
+      }
+    }
+    
+    const htmlMsg = buildMessageHTML(contact, imageData?.dataUrl || '', bodyHTMLClean);
+    const textMsg = buildMessagePlainText(contact, bodyHTMLClean);
+    
+    // Criar elemento do card
+    const wrapper = document.createElement('div');
+    wrapper.className = 'msg';
+    wrapper.innerHTML = `
       <div class="msg__head">
-        <strong>${titleCaseName(c.nome)}</strong>
-        <span class="badge">${c.email||'sem email'}</span>
-        <span class="badge">Prefixo: ${c.prefixo||'-'}</span>
-        <button class="msg__toggle" data-toggle>Recolher</button>
+        <strong>${titleCaseName(contact.nome)}</strong>
+        <span class="badge">${contact.email || 'sem email'}</span>
+        <span class="badge">Prefixo: ${contact.prefixo || '—'}</span>
+        <button class="msg__toggle" data-toggle>👁️ Recolher</button>
       </div>
       <div class="msg__body">
         <div class="richmsg" data-htmlmsg></div>
-        <div class="toolbar" style="margin-top:8px">
-          <button class="btn" data-copy>Copiar mensagem (com imagem)</button>
-          <button class="btn ghost" data-copyopen ${c.email?'':'disabled'}>Copiar e abrir chat (sem imagem)</button>
-          <button class="btn ghost" data-openchat ${c.email?'':'disabled'}>Abrir chat no Teams (este)</button>
+        <div class="toolbar" style="margin-top:12px">
+          <button class="btn" data-copy>📋 Copiar mensagem (com imagem)</button>
+          <button class="btn ghost" data-copyopen ${contact.email ? '' : 'disabled'}>
+            📋 Copiar e abrir chat (sem imagem)
+          </button>
+          <button class="btn dark" data-openchat ${contact.email ? '' : 'disabled'}>
+            💬 Abrir chat no Teams
+          </button>
         </div>
       </div>
     `;
-    wrap.querySelector('[data-htmlmsg]').innerHTML = htmlMsg;
-    el('#output').appendChild(wrap);
-
-    wrap.querySelector('[data-toggle]').addEventListener('click', ()=>{
-      setCollapsed(wrap, !wrap.classList.contains('collapsed'));
+    
+    // Inserir conteúdo HTML da mensagem
+    wrapper.querySelector('[data-htmlmsg]').innerHTML = htmlMsg;
+    
+    // Adicionar ao output
+    el('#output').appendChild(wrapper);
+    
+    // Event listener: Toggle expandir/recolher
+    wrapper.querySelector('[data-toggle]').addEventListener('click', () => {
+      setCollapsed(wrapper, !wrapper.classList.contains('collapsed'));
     });
-
-    // Copiar com imagem
-    wrap.querySelector('[data-copy]').addEventListener('click', async ()=>{
-      let ensureImg = imageCacheByContact.get(idx);
-      if(!ensureImg){ ensureImg = await buildPrintForContact(idx); imageCacheByContact.set(idx, ensureImg); }
+    
+    // Event listener: Copiar mensagem COM imagem
+    wrapper.querySelector('[data-copy]').addEventListener('click', async () => {
+      // Garantir imagem atualizada
+      let ensureImg = imageCacheByContact.get(contactIndex);
+      if (!ensureImg) {
+        ensureImg = await buildPrintForContact(contactIndex);
+        if (ensureImg) {
+          imageCacheByContact.set(contactIndex, ensureImg);
+        }
+      }
+      
       const mode = await copyMessage(
-        buildMessageHTML(c, ensureImg?.dataUrl || '', bodyHTMLClean),
-        buildMessagePlainText(c, bodyHTMLClean),
+        buildMessageHTML(contact, ensureImg?.dataUrl || '', bodyHTMLClean),
+        buildMessagePlainText(contact, bodyHTMLClean),
         ensureImg?.blob
       );
-      const b=wrap.querySelector('[data-copy]');
-      b.textContent = mode==='html' ? 'Copiado!' : 'Copiado (texto)';
-      setTimeout(()=>b.textContent='Copiar mensagem (com imagem)',1200);
-      setCollapsed(wrap, true);
+      
+      const btn = wrapper.querySelector('[data-copy]');
+      if (mode === 'html') {
+        btn.textContent = '✅ Copiado!';
+      } else if (mode === 'text') {
+        btn.textContent = '✅ Copiado (texto)';
+      } else {
+        btn.textContent = '❌ Erro ao copiar';
+      }
+      
+      setTimeout(() => {
+        btn.textContent = '📋 Copiar mensagem (com imagem)';
+      }, 2000);
+      
+      setCollapsed(wrapper, true);
     });
-
-    // Copiar (sem imagem) e abrir chat — abre com mensagem pré-carregada
-    const btnCopyOpen = wrap.querySelector('[data-copyopen]');
-    if(btnCopyOpen){
-      btnCopyOpen.addEventListener('click', async ()=>{
-        const bodyClean = getEditorHTMLClean();
+    
+    // Event listener: Copiar SEM imagem e abrir Teams
+    const btnCopyOpen = wrapper.querySelector('[data-copyopen]');
+    if (btnCopyOpen) {
+      btnCopyOpen.addEventListener('click', async () => {
         await copyMessage(
-          buildMessageHTML(c, '', bodyClean),
-          buildMessagePlainText(c, bodyClean),
+          buildMessageHTML(contact, '', bodyHTMLClean),
+          buildMessagePlainText(contact, bodyHTMLClean),
           null
         );
-        openTeamsChatWithMessage(c.email, buildMessagePlainText(c, bodyClean));
-        setCollapsed(wrap, true);
+        
+        openTeamsChatWithMessage(contact.email, buildMessagePlainText(contact, bodyHTMLClean));
+        setCollapsed(wrapper, true);
       });
     }
-
-    // Abrir chat (este) — copia mensagem COM IMAGEM e abre chat sem pré-carregar texto (Ctrl+V no Teams)
-    const btnChat = wrap.querySelector('[data-openchat]');
-    if(btnChat){
-      btnChat.addEventListener('click', async ()=>{
-        const bodyClean = getEditorHTMLClean();
-        let ensureImg = imageCacheByContact.get(idx);
-        if(!ensureImg){ ensureImg = await buildPrintForContact(idx); imageCacheByContact.set(idx, ensureImg); }
+    
+    // Event listener: Abrir chat (copia COM imagem, abre sem pré-carregar)
+    const btnOpenChat = wrapper.querySelector('[data-openchat]');
+    if (btnOpenChat) {
+      btnOpenChat.addEventListener('click', async () => {
+        // Garantir imagem
+        let ensureImg = imageCacheByContact.get(contactIndex);
+        if (!ensureImg) {
+          ensureImg = await buildPrintForContact(contactIndex);
+          if (ensureImg) {
+            imageCacheByContact.set(contactIndex, ensureImg);
+          }
+        }
+        
+        // Copiar com imagem
         await copyMessage(
-          buildMessageHTML(c, ensureImg?.dataUrl || '', bodyClean),
-          buildMessagePlainText(c, bodyClean),
+          buildMessageHTML(contact, ensureImg?.dataUrl || '', bodyHTMLClean),
+          buildMessagePlainText(contact, bodyHTMLClean),
           ensureImg?.blob
         );
-        openTeamsChatNoPrefill(c.email);
-        setCollapsed(wrap, true);
+        
+        // Abrir Teams sem pré-carregar mensagem (usuário cola manualmente)
+        openTeamsChatNoPrefill(contact.email);
+        setCollapsed(wrapper, true);
       });
     }
   }
 
-  function sortSelectedIndices(selectedIdx){
-    const mode = (el('#sortOrder')?.value || 'original');
-    if(mode === 'nome_az'){
-      const arr = selectedIdx.slice().map(i=>({
-        i, key: stripAccents(firstName(contacts[i]?.nome || '')).toLowerCase()
+  /* ========================================
+     ORDENAÇÃO
+  ======================================== */
+  function sortSelectedIndices(selectedIndices) {
+    const sortMode = el('#sortOrder')?.value || 'original';
+    
+    if (sortMode === 'nome_az') {
+      const indexed = selectedIndices.slice().map(idx => ({
+        idx,
+        sortKey: stripAccents(firstName(contacts[idx]?.nome || '')).toLowerCase()
       }));
-      arr.sort((a,b)=> a.key.localeCompare(b.key));
-      return arr.map(x=>x.i);
+      
+      indexed.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+      return indexed.map(item => item.idx);
     }
-    return selectedIdx;
+    
+    return selectedIndices;
   }
 
-  async function regenerateOutput(){
+  /* ========================================
+     REGENERAR OUTPUT (CAMPO 4)
+  ======================================== */
+  async function regenerateOutput() {
+    const outputContainer = el('#output');
+    outputContainer.innerHTML = '<div class="muted" style="text-align:center">⏳ Gerando mensagens...</div>';
+    
     const bodyHTMLClean = getEditorHTMLClean();
-    const target = el('#output'); target.innerHTML='';
-    let selectedIdx = contacts.map((c,i)=> c.selected ? i : -1).filter(i=>i>=0);
-    if(!selectedIdx.length){ target.innerHTML = `<div class="muted">Nenhum contato selecionado.</div>`; return; }
-
-    selectedIdx = sortSelectedIndices(selectedIdx);
-
-    for(const idx of selectedIdx){
-      if(!imageCacheByContact.get(idx)){
+    
+    let selectedIndices = contacts
+      .map((contact, idx) => contact.selected ? idx : -1)
+      .filter(idx => idx >= 0);
+    
+    if (!selectedIndices.length) {
+      outputContainer.innerHTML = '<div class="muted" style="text-align:center">❌ Nenhum contato selecionado.</div>';
+      return;
+    }
+    
+    // Ordenar se necessário
+    selectedIndices = sortSelectedIndices(selectedIndices);
+    
+    console.log(`🔄 Gerando ${selectedIndices.length} mensagem(ns)...`);
+    
+    // Pré-gerar todas as imagens necessárias
+    for (const idx of selectedIndices) {
+      if (!imageCacheByContact.has(idx)) {
         const img = await buildPrintForContact(idx);
-        imageCacheByContact.set(idx, img);
+        if (img) {
+          imageCacheByContact.set(idx, img);
+        }
       }
     }
-    selectedIdx.forEach(idx=> buildAndMountCardForIdx(idx, bodyHTMLClean));
-    log('Mensagens geradas (Campo 4)');
+    
+    // Limpar output
+    outputContainer.innerHTML = '';
+    
+    // Montar cards
+    for (const idx of selectedIndices) {
+      await buildAndMountCardForContact(idx, bodyHTMLClean);
+    }
+    
+    log(`${selectedIndices.length} mensagem(ns) gerada(s) com sucesso!`);
   }
 
-  el('#generateMsgs').addEventListener('click', async ()=>{ await regenerateOutput(); });
+  // Event listener: Botão "Gerar mensagens"
+  el('#generateMsgs').addEventListener('click', async () => {
+    await regenerateOutput();
+  });
 
-  /* ===== Botão TEAMS (teste no campo 3) ===== */
+  // Event listener: Ordenação
+  el('#sortOrder').addEventListener('change', regenerateOutput);
+
+  /* ========================================
+     BOTÃO TEAMS NO CAMPO 3 (TESTE)
+  ======================================== */
   const zipBtn = el('#downloadZip');
-  if(zipBtn){
-    zipBtn.textContent = 'Abrir chat no Teams (teste)';
-    zipBtn.addEventListener('click', async ()=>{
-      const firstIdx = contacts.findIndex(c=>c.selected);
-      if(firstIdx<0){ alert('Selecione ao menos um contato na lista.'); return; }
+  if (zipBtn) {
+    zipBtn.addEventListener('click', async () => {
+      const firstSelectedIdx = contacts.findIndex(c => c.selected);
+      
+      if (firstSelectedIdx < 0) {
+        alert('❌ Selecione ao menos um contato na lista.');
+        return;
+      }
+      
       const bodyHTMLClean = getEditorHTMLClean();
-      let ensureImg = imageCacheByContact.get(firstIdx);
-      if(!ensureImg){ ensureImg = await buildPrintForContact(firstIdx); imageCacheByContact.set(firstIdx, ensureImg); }
+      
+      // Garantir imagem
+      let ensureImg = imageCacheByContact.get(firstSelectedIdx);
+      if (!ensureImg) {
+        ensureImg = await buildPrintForContact(firstSelectedIdx);
+        if (ensureImg) {
+          imageCacheByContact.set(firstSelectedIdx, ensureImg);
+        }
+      }
+      
+      // Copiar mensagem com imagem
       await copyMessage(
-        buildMessageHTML(contacts[firstIdx], ensureImg?.dataUrl || '', bodyHTMLClean),
-        buildMessagePlainText(contacts[firstIdx], bodyHTMLClean),
+        buildMessageHTML(contacts[firstSelectedIdx], ensureImg?.dataUrl || '', bodyHTMLClean),
+        buildMessagePlainText(contacts[firstSelectedIdx], bodyHTMLClean),
         ensureImg?.blob
       );
-      // No teste, ainda abrimos COM mensagem pré-carregada
-      openTeamsChatWithMessage(contacts[firstIdx].email, buildMessagePlainText(contacts[firstIdx], bodyHTMLClean));
-      log('Deep link do Teams aberto (teste) + conteúdo copiado para colar no chat.');
+      
+      // Abrir Teams COM mensagem pré-carregada (teste)
+      openTeamsChatWithMessage(
+        contacts[firstSelectedIdx].email,
+        buildMessagePlainText(contacts[firstSelectedIdx], bodyHTMLClean)
+      );
+      
+      log('Deep link do Teams aberto (teste) + conteúdo copiado');
     });
   }
 
-  /* ===== Atualizações globais ===== */
-  function updatePreviewOnChange(){ updatePreview(); }
-  messageBody.addEventListener('input', debounce(updatePreviewOnChange,120));
-
-  async function doFullRefresh(){
+  /* ========================================
+     ATUALIZAÇÃO GLOBAL
+  ======================================== */
+  async function doFullRefresh() {
+    console.log('🔄 Iniciando atualização completa...');
+    
+    // 1. Recarregar contatos se houver texto
     const rawContacts = el('#contactsInput').value.trim();
-    if(rawContacts){
+    if (rawContacts) {
       const parsed = parseContacts(rawContacts);
-      if(parsed.length){ contacts = parsed; }
-    }
-    try{
-      const { headers: h0, rowsAoA } = extractFromEditable(sheetPaste);
-      if(h0?.length && rowsAoA?.length){
-        const hdrRowInput = el('#headerRow').value.trim();
-        const aoaFull = [h0, ...rowsAoA];
-        let hdrIdx = 0;
-        if(hdrRowInput){ const n=parseInt(hdrRowInput,10); if(Number.isInteger(n) && n>=1 && n<=aoaFull.length){ hdrIdx=n-1; } }
-        const headersRow = aoaFull[hdrIdx] || aoaFull[0];
-        headers = headersRow.map(x=>String(x||'').trim());
-        const dataAoA = aoaFull.slice(hdrIdx+1).filter(r=> r.some(v=>String(v).trim()!==''));
-        rowsAll = dataAoA.map(r=>{ const o={}; headers.forEach((h,i)=> o[h]=(r[i]??'').toString().trim()); return o; });
-        imageCacheByContact.clear();
-        el('#attachStats').textContent = `Planilha colada: ${rowsAll.length} linha(s) • ${headers.length} coluna(s)`;
-        el('#clearAttach').disabled = rowsAll.length===0;
-        el('#downloadZip').disabled = rowsAll.length===0;
-      }else{
-        el('#attachStats').textContent = 'Sem dados';
+      if (parsed.length) {
+        contacts = parsed;
+        console.log(`✅ ${parsed.length} contato(s) recarregado(s)`);
       }
+    }
+    
+    // 2. Reprocessar planilha se houver dados
+    try {
+      const { headers: h0, rowsAoA } = extractFromEditable(sheetPaste);
+      
+      if (h0?.length && rowsAoA?.length) {
+        const hdrRowValue = headerRowInput.value.trim();
+        const fullArray = [h0, ...rowsAoA];
+        let headerIndex = 0;
+        
+        if (hdrRowValue) {
+          const num = parseInt(hdrRowValue, 10);
+          if (Number.isInteger(num) && num >= 1 && num <= fullArray.length) {
+            headerIndex = num - 1;
+          }
+        }
+        
+        const headersRow = fullArray[headerIndex] || fullArray[0];
+        headers = headersRow.map(x => String(x || '').trim());
+        
+        const dataArray = fullArray
+          .slice(headerIndex + 1)
+          .filter(row => row.some(value => String(value).trim() !== ''));
+        
+        rowsAll = dataArray.map(row => {
+          const obj = {};
+          headers.forEach((header, idx) => {
+            obj[header] = (row[idx] ?? '').toString().trim();
+          });
+          return obj;
+        });
+        
+        imageCacheByContact.clear();
+        
+        const statsText = `Planilha: ${rowsAll.length} linha(s) • ${headers.length} coluna(s)`;
+        el('#attachStats').textContent = statsText;
+        el('#attachStats').className = 'badge success';
+        
+        el('#clearAttach').disabled = rowsAll.length === 0;
+        el('#downloadZip').disabled = rowsAll.length === 0;
+        
+        console.log('✅ Planilha reprocessada');
+      } else {
+        el('#attachStats').textContent = 'Sem dados';
+        el('#attachStats').className = 'badge warning';
+      }
+      
       refreshPreviewFromEditable();
-    }catch(e){ showError('Falha ao atualizar dados colados.', e?.message||String(e)); logErr(e?.message||String(e)); }
-
+    } catch (e) {
+      console.error('Erro ao atualizar planilha:', e);
+      showError('Falha ao atualizar dados colados', e?.message || String(e));
+    }
+    
+    // 3. Recontar associações
     recountAndAutoselect();
+    
+    // 4. Atualizar preview
     await updatePreview();
+    
+    // 5. Regenerar output
     await regenerateOutput();
-    log('Tudo atualizado');
+    
+    log('✅ Atualização completa concluída!');
   }
+
+  // Event listeners dos botões de atualização
   el('#refreshContacts').addEventListener('click', doFullRefresh);
   el('#refreshMsg').addEventListener('click', doFullRefresh);
   el('#refreshSheet').addEventListener('click', doFullRefresh);
   el('#refreshAll').addEventListener('click', doFullRefresh);
-  el('#sortOrder').addEventListener('change', regenerateOutput);
 
-  log('Pronto — carregado');
+  /* ========================================
+     INICIALIZAÇÃO FINAL
+  ======================================== */
+  console.log('✅ Sistema inicializado');
+  log('✅ Pronto para uso!');
 });
 </script>
 </body>
